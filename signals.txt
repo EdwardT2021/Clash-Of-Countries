@@ -1,0 +1,36 @@
+cd E:/Coding/Projects-Python/Clash Of Countries
+python server.py
+
+P: CONNECT
+S: LOGIN
+P: LOGIN {USERNAME: PASSWORD} OR SIGNUP
+
+IF SIGNUP:
+    S: APPROVED
+    P: {username: password}
+    S: LOGGEDIN
+ELSE:
+    WHILE password != Player.password:
+        S: REJECTED
+        P: {username: password}
+    S: LOGGEDIN
+
+P: {KEYWORD: PARAMS}
+KEYWORD OPTIONS: MATCHMAKE, INVENTORY, LOGOUT
+
+IF MATCHMAKE:
+    S: MATCHMAKING
+    S: {Opponent Player Object}
+    WHILE IN BATTLE:
+        P: {REQUEST: PARAMS}
+        S: {OPPONENT MOVES}
+    S: {ELO CHANGE}
+
+ELIF INVENTORY:
+    S: {CARD OBJECTS}
+    P: {CARDS TO BE FUSED}
+
+ELIF LOGOUT:
+    S: LOGGEDOUT
+    
+

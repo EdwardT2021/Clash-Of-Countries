@@ -1,0 +1,47 @@
+Hello and welcome to Clash Of Countries! This is the tutorial!
+This is the board you will be faced with upon entering every battle!
+On the LEFT, you will see your two COUNTRY cards, and two BUFF cards
+On the RIGHT is the same, but for the ENEMY
+Up top, is a timer for the battle, and a turn counter, along with the ELO of the enemy and yourself
+ELO is a rating given to you representing how SKILLED you are.
+In each country card, are a few key statistics
+TOWNS are used to represent the HEALTH of a country. When it hits 0, this card DIES
+MIGHT represents your ATTACKING POWER, and DEFENSE represents your DEFENSIVE POWER 
+SIEGE ATTACK represents your SIEGE ATTACK POWER - This will be covered shortly
+SIEGE DEFENSE represents your SIEGE DEFENSE POWER - This will also be covered shortly
+FORTIFICATIONS represents how well fortified your country is
+There are a few units in the game that help decide your attack/defense statistics
+INFANTRY, with a DEFENSE POWER of 12, and an ATTACK POWER of 4
+TANKS, with a DEFENSE POWER of 15, an ATTACK POWER of 25, and a SIEGE ATTACK POWER of 5
+PLANES, with a DEFENSE POWER of 10, and an ATTACK POWER of 30
+SIEGE ARTILLERY, with a DEFENSE POWER of 5, an ATTACK POWER of 5, and a SIEGE ATTACK POWER of 20
+DEFENSE ARTILLERY, with a DEFENSE POWER of 5, an ATTACK POWER of 5, and a SIEGE DEFENSE POWER of 20
+These units are created via PRODUCTION, which is represented by 50x the country`s PRODUCTION STAT
+This number represents the production power available each turn, which is used to build units!
+You can tell each country what unit to build by setting the PRODUCTION QUEUE
+In the production queue, you choose units in PRIORITY ORDER, highest priority being first!
+When you want to attack another country, you must first overcome its FORTIFICATIONS
+This is done via pitting your SIEGE ATTACK POWER against it 
+One fortification is destroyed by 40 siege attack power!
+Before this enemy defensive artilley rains down upon you 
+This destroys ONE ATTACK artillery for every THREE DEFENSE artillery 
+Once this stage has been completed, any REMAINING fortifications take away 200 ATTACK POWER
+After this, your REMAINING ATTACK POWER is pitted against the enemies DEFENSE POWER
+If you manage to win, for every 25 attack power you have left, ONE TOWN is destroyed
+Upon a loss, heavy casualties are taken, with only 65% of your troops left!
+Upon a victory, a much more manageable 85% of your troops remain!
+There are three types of country - Aggressive, Balanced, Defensive
+AGGRESSIVE countries are represented by RED
+BALANCED countries are represented by PURPLE
+DEFENSIVE countries are represented by BLUE
+An example of each country except defensive is shown on the board 
+Who knows, one could await you at the end of this battle!
+There are many different types of BUFF, affecting all statistics
+There are FORTIFICATION buffs, that add a number of fortifications to your country
+There are PRODUCTION buffs, that increase your production multiplier
+There are ATTACK and DEFENSE buffs, that increase your attack and defense
+There are SIEGE ATTACK and SIEGE DEFENSE buffs, that increase your siege attack and siege defense
+There are TOWN buffs, that increase the number of towns in a country
+Now you should be prepared for this battle! You can come back here and play the tutorial battle anytime, without this dialogue!
+And remember, to go back to the main menu, just press the cross in the corner!
+Good luck, and have fun!
