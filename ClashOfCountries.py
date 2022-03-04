@@ -995,18 +995,17 @@ class EnemyDefensiveCountry(EnemyCountry, DefensiveCountry):
 class Connection:
 
     def __init__(self):
-        finished = False
-        t = Thread(target=LoadScreen, args=["Connecting to server!", lambda: finished])
+        t = Thread(target=LoadScreen, args=["Connecting to server!"])
         self.HOST = "192.168.56.1"
         self.PORT = 11034
         self.SOCK = s.socket(s.AF_INET, s.SOCK_STREAM)
         
         try:
-            self.SOCK.settimeout(0.5)
+            self.SOCK.settimeout(1)
             self.SOCK.connect((self.HOST, self.PORT))
         except:
             raise e.InitialConnectionError
-        finished = True
+        t.quit()
         t.join()
 
     def Receive(self) -> dict:
@@ -1027,8 +1026,7 @@ class Connection:
     
 
     def Login(self) -> bool:
-        finished = False
-        t = Thread(target=LoadScreen, args=["Logging In...", lambda: finished])
+        t = Thread(target=LoadScreen, args=["Logging In..."])
         if self.Receive()["Command"] == "LOGIN":
             if GAME.New:
                 message = json.dumps({"Command": "SIGNUP", "Args": (GAME.PLAYER.username, GAME.PLAYER.password)})
@@ -1037,7 +1035,7 @@ class Connection:
             self.Send(message)
             print("message sent")
         command = self.Receive()["Command"]
-        finished = True
+        t.quit()
         t.join()
         if command == "LOGGEDIN":
             return True
@@ -1480,15 +1478,14 @@ class Battle:
         self.PlayerActions = [[[hash(self.countries[0]), None], {}, None], [[hash(self.countries[1]), None], {}, None]]   
         while CONN.Receive()["Command"] != "SUCCESS":
             continue
-        finished = False
-        t = Thread(target=LoadScreen, args=["Waiting for enemy...", lambda: finished])
+        t = Thread(target=LoadScreen, args=["Waiting for enemy..."])
         while CONN.Receive()["Command"] != "CHANGES":
             if t.is_alive():
                 continue
             else:
                 GAME.Save()
                 sys.exit()
-        finished = True
+        t.quit()
         t.join()
 
     def PlayerWins(self):
@@ -2488,15 +2485,12 @@ class InputBox:
 
 class Thread(threading.Thread):
     def __init__(self, target: 'function', args: list):
-        super(Thread, self).__init__(target=target, args=args + [lambda: GAME.getevent(), self])
-        self.Exception = None
+        super(Thread, self).__init__(target=target, args=args + [self])
+        self.running = True
         self.start()
     
-    def is_alive(self):
-        if self.Exception is not None:
-            return False
-        else:
-            return super(Thread, self).is_alive()
+    def quit(self):
+        self.running = False
         
 def MainLoop():
     GAME.screen.fill(BLACK)
@@ -2862,20 +2856,20 @@ def GetPlayerInfo():
 def Play():
     msg = {"Command": "MATCHMAKE", "Args": None}
     CONN.Send(json.dumps(msg))
-    finished = False
-    t = Thread(target=LoadScreen, args=["Matchmaking...", lambda: finished])
+    t = Thread(target=LoadScreen, args=["Matchmaking..."])
     data = CONN.Receive()
     while data["Command"] != "BATTLE":
-        if t.is_alive():
-            continue
-        else:
-            GAME.Save()
-            sys.exit()
+        for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    t.quit()
+        if not t.is_alive():
+            msg = json.dumps({"Command": "UNMATCHMAKE", "Args": None})
+            CONN.Send(msg)
+            return
     battle = data["Args"][0]
-    finished = True
+    t.quit()
     t.join()
-    finished = False
-    t = Thread(target=LoadScreen, args=["Initialising Battle...", lambda: finished])
+    t = Thread(target=LoadScreen, args=["Initialising Battle..."])
     enemyCountries = battle["EnemyCountries"]
     enemyBuffs = battle["EnemyBuffs"]
     enemyCountryObjects = []
@@ -2895,7 +2889,7 @@ def Play():
         enemyBuffObjects.append(eval(buff + "Buff(False)"))
     enemy = Player(enemy[0], countries=enemyCountryObjects, buffs=enemyBuffObjects, wins=enemy[1], losses=enemy[2], elo=enemy[3])
     battle = Battle(GAME.PLAYER, playerCountries, playerBuffs, enemy, enemyCountryObjects, enemyBuffObjects, battle["First"])
-    finished = True
+    t.quit()
     t.join()
     battle.Run()
     GAME.Reset()
@@ -2905,23 +2899,22 @@ class LoadObject:
         self.rect = pygame.Rect(centre[0], centre[1], 8, 8)
         self.centre = centre
         self.theta = 0
-        self.Spiral = "(12**2 + 2)*(self.theta**(1/6))-30"
+        self.SpiralFunc = lambda: 146*(self.theta**(1/6))-30
 
     def Draw(self):
         self.theta += 0.05
-        radius = eval(self.Spiral)
+        radius = self.SpiralFunc()
         adj = radius * cos(self.theta)
         opp = radius * sin(self.theta)
         self.rect.x = self.centre[0]+adj
         self.rect.y = self.centre[1]+opp
         pygame.draw.rect(GAME.screen, ROYALBLUE, self.rect)
 
-def LoadScreen(text: str, stop: 'function', getevents: 'function', thread: Thread):  
-    global GAME  
+def LoadScreen(text: str, thread: Thread):    
     text = GAME.boldFont.render(text, True, WHITE)
     los = [LoadObject((GAME.SCREENWIDTH/2, GAME.SCREENHEIGHT/2))]
     counter = 0
-    while True:
+    while thread.running:
         GAME.screen.fill(BLUE) 
         counter += 1
         if counter % 30 == 0:
@@ -2930,15 +2923,7 @@ def LoadScreen(text: str, stop: 'function', getevents: 'function', thread: Threa
             lo.Draw()
         GAME.screen.blit(text, (GAME.SCREENWIDTH/2-75, GAME.SCREENHEIGHT/2-15))
         GAME.Update()
-        if stop():
-            return
-        for event in getevents(): #Stops Windows saying the program isnt responding
-            if event.type == pygame.QUIT:
-                GAME.SFXPlayer.play(GAME.ClickSound)
-                thread.Exception = 1
-                return
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                continue
+
 def Main():
     global GAME 
     GAME = Game()

@@ -847,6 +847,20 @@ class Server: #Class containing server methods and attributes
                 break
             elif command == "MATCHMAKE":
                 self.__matchmakeInsert(player)
+            elif command == "UNMATCHMAKE":
+                elo = player.elo
+                if elo <= 1000:
+                    pool = self.__pool1
+                elif elo <= 2000:
+                    pool = self.__pool2
+                elif elo <= 3000:
+                    pool = self.__pool3
+                else:
+                    pool = self.__pool4
+                try:
+                    pool.remove(player)
+                except:
+                    pass
             elif command == "ADDCOUNTRY":
                 with self.__databaseLock:
                     try:
