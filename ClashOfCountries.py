@@ -2917,7 +2917,7 @@ def LoadScreen(text: str, thread: Thread):
     while thread.running:
         GAME.screen.fill(BLUE) 
         counter += 1
-        if counter % 30 == 0:
+        if counter % 10 == 0:
             los.append(LoadObject((GAME.SCREENWIDTH/2, GAME.SCREENHEIGHT/2)))
         for lo in los:    
             lo.Draw()
