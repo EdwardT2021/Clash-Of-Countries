@@ -996,13 +996,13 @@ class Connection:
 
     def __init__(self):
         finished = False
-        t = threading.Thread(target=LoadScreen, args=("Connecting to server!", lambda: finished))
-        t.start()
-        self.HOST = "192.168.1.64"
+        t = Thread(target=LoadScreen, args=["Connecting to server!", lambda: finished])
+        self.HOST = "192.168.56.1"
         self.PORT = 11034
         self.SOCK = s.socket(s.AF_INET, s.SOCK_STREAM)
         
         try:
+            self.SOCK.settimeout(0.5)
             self.SOCK.connect((self.HOST, self.PORT))
         except:
             raise e.InitialConnectionError
@@ -1011,7 +1011,10 @@ class Connection:
 
     def Receive(self) -> dict:
         "Receive a decoded dictionary containing necessary arguments"
-        data = self.SOCK.recv(1024)
+        try:
+            data = self.SOCK.recv(1024)
+        except:
+            return {"Command": None, "Args": None}
         dictionary = json.loads(data.decode("UTF-8"))
         print(f"{dictionary} received")
         return dictionary
@@ -1025,8 +1028,7 @@ class Connection:
 
     def Login(self) -> bool:
         finished = False
-        t = threading.Thread(target=LoadScreen, args=("Logging In...", lambda: finished))
-        t.start()
+        t = Thread(target=LoadScreen, args=["Logging In...", lambda: finished])
         if self.Receive()["Command"] == "LOGIN":
             if GAME.New:
                 message = json.dumps({"Command": "SIGNUP", "Args": (GAME.PLAYER.username, GAME.PLAYER.password)})
@@ -1229,6 +1231,9 @@ class Game:
         fps = "FPS: " + str(int(self.clock.get_fps()))
         text = self.smallBoldFont.render(fps, True, BLACK)
         GAME.screen.blit(text, (10, 51))
+    
+    def getevent(self) -> list:
+        return pygame.event.get()
         
 #####################################################################################
 
@@ -1428,7 +1433,7 @@ class Battle:
                             GAME.SFXPlayer.play(GAME.ClickSound)
                             self.StageManager.CardClicked(renderable)
                     
-            for event in pygame.event.get():                       #Gets user input events, iterates through them
+            for event in GAME.getevent():                       #Gets user input events, iterates through them
                 if event.type == pygame.QUIT: 
                     GAME.SFXPlayer.play(GAME.ClickSound)           #If cross in corner pressed, stop running this game loop
                     self.run = False                               #This will return you to the Main Menu
@@ -1473,21 +1478,18 @@ class Battle:
         print(actions)
         CONN.Send(actions)
         self.PlayerActions = [[[hash(self.countries[0]), None], {}, None], [[hash(self.countries[1]), None], {}, None]]   
-        if CONN.Receive()["Command"] == "SUCCESS":
-            finished = False
-            t = threading.Thread(target=LoadScreen, args=("Waiting for enemy...", lambda: finished))
-            t.start()
-            received = False
-            while not received:
-                try:
-                    message = CONN.Receive()
-                    received = True
-                except:
-                    continue
-            finished = True
-            t.join()
-            if message["Command"] == "CHANGES":
-                return message["Args"]
+        while CONN.Receive()["Command"] != "SUCCESS":
+            continue
+        finished = False
+        t = Thread(target=LoadScreen, args=["Waiting for enemy...", lambda: finished])
+        while CONN.Receive()["Command"] != "CHANGES":
+            if t.is_alive():
+                continue
+            else:
+                GAME.Save()
+                sys.exit()
+        finished = True
+        t.join()
 
     def PlayerWins(self):
         timeTaken = self.GameBar.GetBattleTime()
@@ -1516,7 +1518,7 @@ class Battle:
             GAME.screen.blit(eloGain, (440, 325))
             rewardCard.Update()
             rewardCard.Draw()
-            for event in pygame.event.get():                       #Gets user input events, iterates through them
+            for event in GAME.getevent():                       #Gets user input events, iterates through them
                 if event.type == pygame.QUIT:                      #If cross in corner pressed, stop running this game loop
                     break
             GAME.Update()
@@ -1530,7 +1532,11 @@ class Battle:
         if isinstance(self, TutorialBattle):
             eloGain = "0"
         else:
-            elo = CONN.Receive()[1]
+            data = CONN.Receive()
+            while data["Command"] != "ELO":
+                data = CONN.Receive()
+                continue
+            elo = data["Args"]
             eloGain = elo - GAME.PLAYER.elo
             GAME.PLAYER.elo = elo
             elo = str(elo)
@@ -1558,7 +1564,7 @@ class Battle:
                 rewardCard.Draw()
             else:
                 GAME.screen.blit(reward, (660, 250))
-            for event in pygame.event.get():                       #Gets user input events, iterates through them
+            for event in GAME.getevent():                       #Gets user input events, iterates through them
                 if event.type == pygame.QUIT:                      #If cross in corner pressed, stop running this game loop
                     break
             GAME.Update()
@@ -2223,7 +2229,10 @@ class Dagger(pygame.sprite.Sprite):
         self.right = not self.left
         self.distancex = self.endX - self.startX
         self.distancey = self.endY - self.startY
-        self.image = pygame.image.load(resource_path("art\\dagger.png")).convert_alpha()
+        image = pygame.image.load(resource_path("art\\gun.png")).convert_alpha()
+        self.image = pygame.transform.scale(image, (50, 50))
+        if self.left:
+            self.image = pygame.transform.flip(self.image, True, False)
         self.rect = self.image.get_rect()
         self.rect.center = (self.startX, self.startY)
         self.vector = (self.distancex / 120, self.distancey / 120)
@@ -2477,6 +2486,18 @@ class InputBox:
 
 ####################################################################################################
 
+class Thread(threading.Thread):
+    def __init__(self, target: 'function', args: list):
+        super(Thread, self).__init__(target=target, args=args + [lambda: GAME.getevent(), self])
+        self.Exception = None
+        self.start()
+    
+    def is_alive(self):
+        if self.Exception is not None:
+            return False
+        else:
+            return super(Thread, self).is_alive()
+        
 def MainLoop():
     GAME.screen.fill(BLACK)
     GAME.Update()
@@ -2567,7 +2588,7 @@ def MainMenu():
                         GAME.MusicPlayer.load(resource_path("music\\Menu.ogg"))
                         GAME.MusicPlayer.play(-1)
     
-        for event in pygame.event.get(): #Iterates through and handles player input events
+        for event in GAME.getevent(): #Iterates through and handles player input events
 
             if event.type == pygame.QUIT:
                 run = False
@@ -2774,7 +2795,7 @@ def Inventory():
                         cardSelected.highlighted = False 
                         cardSelected = None     
             
-        for event in pygame.event.get():                       #Gets user input events, iterates through them
+        for event in GAME.getevent():                       #Gets user input events, iterates through them
             if event.type == pygame.QUIT: 
                 GAME.SFXPlayer.play(GAME.ClickSound)           #If cross in corner pressed, stop running this game loop
                 run = False                                    #This will return you to the Main Menu
@@ -2793,7 +2814,7 @@ def GetPlayerInfo():
     while run:
         GAME.screen.fill(BLUE)
         inputbox.Draw()
-        for event in pygame.event.get():                       #Gets user input events, iterates through them
+        for event in GAME.getevent():                       #Gets user input events, iterates through them
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_RETURN:
                     GAME.PLAYER.SetUsername(inputbox.string) 
@@ -2812,7 +2833,7 @@ def GetPlayerInfo():
     while run:
         GAME.screen.fill(BLUE)
         inputbox.Draw()
-        for event in pygame.event.get():                       #Gets user input events, iterates through them
+        for event in GAME.getevent():                       #Gets user input events, iterates through them
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_RETURN:
                     GAME.PLAYER.SetPassword(inputbox.string)
@@ -2842,17 +2863,19 @@ def Play():
     msg = {"Command": "MATCHMAKE", "Args": None}
     CONN.Send(json.dumps(msg))
     finished = False
-    t = threading.Thread(target=LoadScreen, args=("Matchmaking...", lambda: finished))
-    t.start()
-    try:
-        battle = CONN.Receive()["Args"][0]
-        finished = True
-        t.join()
-    except:
-        return
+    t = Thread(target=LoadScreen, args=["Matchmaking...", lambda: finished])
+    data = CONN.Receive()
+    while data["Command"] != "BATTLE":
+        if t.is_alive():
+            continue
+        else:
+            GAME.Save()
+            sys.exit()
+    battle = data["Args"][0]
+    finished = True
+    t.join()
     finished = False
-    t = threading.Thread(target=LoadScreen, args=("Initialising Battle...", lambda: finished))
-    t.start()
+    t = Thread(target=LoadScreen, args=["Initialising Battle...", lambda: finished])
     enemyCountries = battle["EnemyCountries"]
     enemyBuffs = battle["EnemyBuffs"]
     enemyCountryObjects = []
@@ -2879,42 +2902,41 @@ def Play():
 
 class LoadObject:
     def __init__(self, centre: tuple[int, int]):
-        image = pygame.image.load(resource_path("art\\dagger.png"))
-        self.image = pygame.transform.scale(image, (45, 45))
+        self.rect = pygame.Rect(centre[0], centre[1], 8, 8)
         self.centre = centre
-        self.x = centre[0]
-        self.y = centre[1]
         self.theta = 0
-        self.Spiral = "20*sqrt(self.theta)"
+        self.Spiral = "(12**2 + 2)*(self.theta**(1/6))-30"
 
     def Draw(self):
-        self.theta += 0.1
+        self.theta += 0.05
         radius = eval(self.Spiral)
         adj = radius * cos(self.theta)
         opp = radius * sin(self.theta)
-        self.x = self.centre[0]+adj
-        self.y = self.centre[1]+opp
-        GAME.screen.blit(self.image, (self.x, self.y))
+        self.rect.x = self.centre[0]+adj
+        self.rect.y = self.centre[1]+opp
+        pygame.draw.rect(GAME.screen, ROYALBLUE, self.rect)
 
-def LoadScreen(text: str, stop):    
+def LoadScreen(text: str, stop: 'function', getevents: 'function', thread: Thread):  
+    global GAME  
     text = GAME.boldFont.render(text, True, WHITE)
     los = [LoadObject((GAME.SCREENWIDTH/2, GAME.SCREENHEIGHT/2))]
-    newLO = False
+    counter = 0
     while True:
-        GAME.screen.fill(BLUE)
-        GAME.screen.blit(text, (GAME.SCREENWIDTH/2-75, GAME.SCREENHEIGHT/2-15))
-        if round(los[0].x, 2) == los[0].centre[0]:
-            newLO = True
+        GAME.screen.fill(BLUE) 
+        counter += 1
+        if counter % 30 == 0:
             los.append(LoadObject((GAME.SCREENWIDTH/2, GAME.SCREENHEIGHT/2)))
         for lo in los:    
             lo.Draw()
+        GAME.screen.blit(text, (GAME.SCREENWIDTH/2-75, GAME.SCREENHEIGHT/2-15))
         GAME.Update()
         if stop():
             return
-        for event in pygame.event.get(): #Stops Windows saying the program isnt responding
+        for event in getevents(): #Stops Windows saying the program isnt responding
             if event.type == pygame.QUIT:
                 GAME.SFXPlayer.play(GAME.ClickSound)
-                continue
+                thread.Exception = 1
+                return
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 continue
 def Main():
