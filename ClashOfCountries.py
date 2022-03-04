@@ -2899,7 +2899,7 @@ class LoadObject:
         self.rect = pygame.Rect(centre[0], centre[1], 8, 8)
         self.centre = centre
         self.theta = 0
-        self.SpiralFunc = lambda: 146*(self.theta**(1/6))-30
+        self.SpiralFunc = lambda: 146*(self.theta**(1/6))-50
 
     def Draw(self):
         self.theta += 0.05
