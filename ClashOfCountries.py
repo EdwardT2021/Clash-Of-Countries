@@ -1058,7 +1058,13 @@ class Connection:
         self.PORT = 11035
         self.SOCK = self.battleSock
         self.SOCK.settimeout(1)
-        self.SOCK.connect((self.HOST, self.PORT))
+        connected = False
+        while not connected:
+            try:
+                self.SOCK.connect((self.HOST, self.PORT))
+                connected = True
+            except:
+                continue
     
     def SetNormalMode(self):
         self.PORT = 11034

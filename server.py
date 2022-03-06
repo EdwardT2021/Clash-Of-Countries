@@ -445,12 +445,12 @@ class Battle:
         self.player1countries = player1.prioritycountries.copy()
         self.player2countries = player2.prioritycountries.copy()
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #Socket specifying using the tcp/ip protocol
-        self.__socket.settimeout(1)
         self.__host = socket.gethostbyname(socket.gethostname()) #Server ip address
         self.__port = 11035 #Server port
         self.__socket.bind((self.__host, self.__port))
         self.__socket.listen() #Allows the socket to act like a server
-        print(f"Battle between {player1.username} and {player2.username} initialised!")
+        print(player1.socket.getpeername()[0])
+        print(player2.socket.getpeername()[0])
         p1connected = False
         p2connected = False
         while not (p1connected and p2connected):
@@ -458,14 +458,27 @@ class Battle:
                 player, address = self.__socket.accept()
             except:
                 continue
-            if address == self.player1.socket.getsockname():
+            if address == self.player1.socket.getpeername()[0]:
                 self.p1socket = player
                 p1connected = True
-                print(f"{player1.username} connected!")
-            elif address == self.player2.socket.getsockname():
+                print(f"{player1} connected!")
+            elif address == self.player2.socket.getpeername()[0]:
                 self.p2socket = player
                 p2connected = True
                 print(f"{player2} connected")
+        player1d = {"EnemyCountries": [], "EnemyBuffs": [], "Enemy": [player1.username, player1.wins, player1.losses, player1.elo], "First": not self.player1first}
+        for c in player1.prioritycountries:
+            player1d["EnemyCountries"].append(c.ToList())
+        for b in player.prioritybuffs:
+            player1d["EnemyBuffs"].append(str(b))
+        SERVER.send("BATTLE", self.p2socket, player1d)
+        player2d = {"EnemyCountries": [], "EnemyBuffs": [], "Enemy": [player2.username, player2.wins, player2.losses, player2.elo], "First": self.player1first}
+        for c in player2.prioritycountries:
+            player2d["EnemyCountries"].append(c.ToList())
+        for b in player2.prioritybuffs:
+             player2d["EnemyBuffs"].append(str(b))
+        SERVER.send("BATTLE", self.p1socket, player2d)
+        print(f"Battle between {player1.username} and {player2.username} initialised!")
                 
     def Run(self):
         print("Battle running")
@@ -1049,19 +1062,9 @@ class Server: #Class containing server methods and attributes
                 opponent = self.__binarySearchMatchmake(pool, value, 0, len(pool)-1)
                 pool.remove(opponent)
             print(player, opponent, "are battling!")
-            battle = Battle(player, opponent)
-            playerd = {"EnemyCountries": [], "EnemyBuffs": [], "Enemy": [player.username, player.wins, player.losses, player.elo], "First": not battle.player1first}
-            for c in player.prioritycountries:
-                playerd["EnemyCountries"].append(c.ToList())
-            for b in player.prioritybuffs:
-                playerd["EnemyBuffs"].append(str(b))
-            self.send("BATTLE", opponent.socket, playerd)
-            oppd = {"EnemyCountries": [], "EnemyBuffs": [], "Enemy": [opponent.username, opponent.wins, opponent.losses, opponent.elo], "First": battle.player1first}
-            for c in opponent.prioritycountries:
-                oppd["EnemyCountries"].append(c.ToList())
-            for b in opponent.prioritybuffs:
-                oppd["EnemyBuffs"].append(str(b))
-            self.send("BATTLE", player.socket, oppd)
+            self.send("MATCHMADE", player.socket)
+            self.send("MATCHMADE", opponent.socket)
+            battle = Battle(player, opponent) 
             battleThread = Thread(battle.Run)
             self.__battleThreads.append(battleThread)
             battleThread.start()
