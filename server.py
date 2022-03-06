@@ -426,7 +426,7 @@ class Player:
         self.losses = losses #type: int
         self.draws = draws #type: int
         self.elo = elo #type: int
-        self.Battle = None
+        self.Battle = False
         self.socket = socket #type: socket.socket
         print(prioritycountries)
         print(prioritybuffs)
@@ -444,8 +444,29 @@ class Battle:
         self.player1first = bool(random.randint(0, 1))
         self.player1countries = player1.prioritycountries.copy()
         self.player2countries = player2.prioritycountries.copy()
+        self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #Socket specifying using the tcp/ip protocol
+        self.__socket.settimeout(1)
+        self.__host = socket.gethostbyname(socket.gethostname()) #Server ip address
+        self.__port = 11035 #Server port
+        self.__socket.bind((self.__host, self.__port))
+        self.__socket.listen() #Allows the socket to act like a server
         print(f"Battle between {player1.username} and {player2.username} initialised!")
-    
+        p1connected = False
+        p2connected = False
+        while not (p1connected and p2connected):
+            try:
+                player, address = self.__socket.accept()
+            except:
+                continue
+            if address == self.player1.socket.getsockname():
+                self.p1socket = player
+                p1connected = True
+                print(f"{player1.username} connected!")
+            elif address == self.player2.socket.getsockname():
+                self.p2socket = player
+                p2connected = True
+                print(f"{player2} connected")
+                
     def Run(self):
         print("Battle running")
         run = True
@@ -454,6 +475,7 @@ class Battle:
         while run:
             if not p1received:
                 try:
+                    print("reachedp1")
                     p1changes = SERVER.receive(self.player1.socket)[1]
                     SERVER.send("SUCCESS", self.player1.socket)
                     print("sent success to p1")
@@ -463,6 +485,7 @@ class Battle:
                     print(e)
             if not p2received:
                 try:
+                    print("reachedp2")
                     p2changes = SERVER.receive(self.player2.socket)[1]
                     SERVER.send("SUCCESS", self.player2.socket)
                     print("sent success to p2")
@@ -824,8 +847,6 @@ class Server: #Class containing server methods and attributes
         print(f"Handling {player.username}")
         disconnectCounter = 0
         while True:
-            if player.Battle is not None:
-                continue
             if disconnectCounter >= 100:
                 print(f"{player.username} has disconnected")
                 client.close()
@@ -845,6 +866,7 @@ class Server: #Class containing server methods and attributes
                 break
             try:
                 command, info = self.receive(client)
+                print(command, info, " received in handle")
             except:
                 continue
             if command == "END":

@@ -999,7 +999,8 @@ class Connection:
         self.HOST = "192.168.1.64"
         self.PORT = 11034
         self.SOCK = s.socket(s.AF_INET, s.SOCK_STREAM)
-        
+        self.regularSock = self.SOCK
+        self.battleSock = s.socket(s.AF_INET, s.SOCK_STREAM)
         try:
             self.SOCK.settimeout(1)
             self.SOCK.connect((self.HOST, self.PORT))
@@ -1041,19 +1042,6 @@ class Connection:
             return True
         else:
             return False
-
-    def GetChangeJSON(self, Infantry: int, Tanks: int, Planes: int, SiegeDefense: int, SiegeAttack: int, Fortifications: int) -> str:
-        "Get the serialised JSON object for the changes to a country"
-        changeDict = {"Infantry": Infantry, "Tanks": Tanks, "Planes": Planes, "SiegeDefense": SiegeDefense, "SiegeAttack": SiegeAttack, "Fortifications": Fortifications}
-        string = json.dumps(changeDict)
-        return string
-    
-    def GetAttackJSON(self, numberOfAttacks: int, *args: list) -> str:
-        """Args represents a number of lists containing [Attacker, Defender]: 
-        numberOfAttacks should match the number of args passed in"""
-        attackDict = {}
-        for i in range(numberOfAttacks):
-            attackDict[f"Attack{i}"] = args[i]
     
     def AddCountry(self, c: Country):
         d = {"Command": "ADDCOUNTRY", "Args": [c.name, c.towns, c.type, c.production]}
@@ -1065,6 +1053,16 @@ class Connection:
         d = {"Command": "ADDBUFF", "Args": a}
         j = json.dumps(d)
         self.Send(j)
+    
+    def SetBattleMode(self):
+        self.PORT = 11035
+        self.SOCK = self.battleSock
+        self.SOCK.settimeout(1)
+        self.SOCK.connect((self.HOST, self.PORT))
+    
+    def SetNormalMode(self):
+        self.PORT = 11034
+        self.SOCK = self.regularSock
         
 ##################################################################################
 
@@ -2863,6 +2861,20 @@ def Play():
     CONN.Send(json.dumps(msg))
     t = Thread(target=LoadScreen, args=["Matchmaking..."])
     data = CONN.Receive()
+    while data["Command"] != "MATCHMADE":
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                t.quit()
+        if not t.is_alive():
+            msg = json.dumps({"Command": "UNMATCHMAKE", "Args": None})
+            CONN.Send(msg)
+            return
+        data = CONN.Receive()
+    t.quit()
+    t.join()
+    CONN.SetBattleMode()
+    t = Thread(target=LoadScreen, args=["Initialising Battle..."])
+    data = CONN.Receive()
     while data["Command"] != "BATTLE":
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -2873,9 +2885,6 @@ def Play():
             return
         data = CONN.Receive()
     battle = data["Args"][0]
-    t.quit()
-    t.join()
-    t = Thread(target=LoadScreen, args=["Initialising Battle..."])
     enemyCountries = battle["EnemyCountries"]
     enemyBuffs = battle["EnemyBuffs"]
     enemyCountryObjects = []
