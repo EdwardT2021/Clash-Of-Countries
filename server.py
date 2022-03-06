@@ -439,8 +439,8 @@ class Battle:
     def __init__(self, player1: Player, player2: Player):
         self.player1 = player1
         self.player2 = player2
-        self.player1.Battle = self
-        self.player2.Battle = self
+        self.player1.Battle = True
+        self.player2.Battle = True
         self.player1first = bool(random.randint(0, 1))
         self.player1countries = player1.prioritycountries.copy()
         self.player2countries = player2.prioritycountries.copy()
@@ -459,8 +459,8 @@ class Battle:
                     print("sent success to p1")
                     p1received = True
                     print(p1changes)
-                except: 
-                    pass
+                except Exception as e:
+                    print(e)
             if not p2received:
                 try:
                     p2changes = SERVER.receive(self.player2.socket)[1]
@@ -468,8 +468,8 @@ class Battle:
                     print("sent success to p2")
                     p2received = True
                     print(p2changes)
-                except:
-                    pass
+                except Exception as e:
+                    print(e)
                 
             if not (p1received and p2received):
                 continue
@@ -544,6 +544,7 @@ class Battle:
                     run = False
                     winner = self.player1
                     loser = self.player2
+
         probabilityofwinnerwin = ELOCALC.calculateProbabilityOfWin(winner.elo, loser.elo)
         probabilityofloserwin = ELOCALC.calculateProbabilityOfWin(loser.elo, winner.elo)
         winner.elo = ELOCALC.calculateNewElo(winner.elo, probabilityofwinnerwin, 1)
@@ -602,6 +603,7 @@ class Server: #Class containing server methods and attributes
     def __init__(self):
 
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #Socket specifying using the tcp/ip protocol
+        self.__socket.settimeout(1)
         self.__host = socket.gethostbyname(socket.gethostname()) #Server ip address
         self.__port = 11034 #Server port
 
@@ -654,7 +656,10 @@ class Server: #Class containing server methods and attributes
     def __accept(self): #Accepts new connections
         print("Accepting Connections")
         while True:
-            client, address = self.__socket.accept()
+            try:
+                client, address = self.__socket.accept()
+            except:
+                continue
             if address not in open("banlist.txt", "r"): #Checks if IP is banned
                 print(f"Connection from {address} accepted!")
                 self.__handlerThreads.append(Thread(self.__login, client, address)) #Creates a new thread to handle the player
@@ -676,7 +681,13 @@ class Server: #Class containing server methods and attributes
             while failed:
                 self.send("LOGIN", client) #Sends login request
                 print("login request sent")
-                command, info = self.receive(client) 
+                received = False
+                while not received:
+                    try:
+                        command, info = self.receive(client) 
+                        received = True
+                    except:
+                        pass
                 print(command, info, "received")
                 if command == "SIGNUP": #Received if player wants a new account
                     username, password = info #Splits info into variables
@@ -811,12 +822,11 @@ class Server: #Class containing server methods and attributes
     
     def __handle(self, client: socket.socket, player: Player): #Function that handles each
         print(f"Handling {player.username}")
+        disconnectCounter = 0
         while True:
             if player.Battle is not None:
                 continue
-            try:
-                command, info = self.receive(client)
-            except:
+            if disconnectCounter >= 100:
                 print(f"{player.username} has disconnected")
                 client.close()
                 elo = player.elo
@@ -833,6 +843,10 @@ class Server: #Class containing server methods and attributes
                 except:
                     pass
                 break
+            try:
+                command, info = self.receive(client)
+            except:
+                continue
             if command == "END":
                 print(f"{player.username} has signed off")
                 client.close()

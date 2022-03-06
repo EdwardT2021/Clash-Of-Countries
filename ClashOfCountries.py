@@ -13,8 +13,8 @@ import threading
 
 # Below are the colour values used
 
-BLUE = "#004aad"
-ROYALBLUE = "#5271ff"
+BLUE = "#356288"
+ROYALBLUE = "#aacfdd"
 BLACK = "#000000"
 WHITE = "#ffffff"
 
@@ -913,7 +913,7 @@ class AggressiveCountry(Country):
             self.army = EnemyAggressiveArmy()
         self.fortifications = 3
         self.basefortifications = 3
-        card = pygame.image.load(resource_path("art\\AggressiveCountryCard.png")).convert_alpha()
+        card = pygame.image.load(resource_path("art\\AggressiveCountry.png")).convert_alpha()
         card = pygame.transform.scale(card, self.cardSize)
         self.flippedImage = pygame.Surface(self.cardSize).convert_alpha()
         self.flippedImage.blit(card, (0, 0))
@@ -929,7 +929,7 @@ class BalancedCountry(Country):
             self.army = EnemyBalancedArmy()
         self.fortifications = 4
         self.basefortifications = 4
-        card = pygame.image.load(resource_path("art\\BalancedCountryCard.png")).convert_alpha()
+        card = pygame.image.load(resource_path("art\\BalancedCountry.png")).convert_alpha()
         card = pygame.transform.scale(card, self.cardSize)
         self.flippedImage = pygame.Surface(self.cardSize).convert_alpha()
         self.flippedImage.blit(card, (0, 0))
@@ -945,7 +945,7 @@ class DefensiveCountry(Country):
             self.army = EnemyDefensiveArmy()
         self.fortifications = 5
         self.basefortifications = 5
-        card = pygame.image.load(resource_path("art\\DefensiveCountryCard.png")).convert_alpha()
+        card = pygame.image.load(resource_path("art\\DefensiveCountry.png")).convert_alpha()
         card = pygame.transform.scale(card, self.cardSize)
         self.flippedImage = pygame.Surface(self.cardSize).convert_alpha()
         self.flippedImage.blit(card, (0, 0))
@@ -1474,7 +1474,6 @@ class Battle:
             self.PlayerActions[i][2] = hash(self.playerCountries[i].Buff)
             self.PlayerActions[i][1] = self.playerCountries[i].UnitsBought
         actions = json.dumps({"Command": "CHANGES", "Args": self.PlayerActions})
-        print(actions)
         CONN.Send(actions)
         self.PlayerActions = [[[hash(self.countries[0]), None], {}, None], [[hash(self.countries[1]), None], {}, None]]
         t = Thread(target=LoadScreen, args=["Waiting for confirmation..."])   
@@ -2151,8 +2150,8 @@ class GameBar:
         self.enemy = enemy
         playertext = player.Text()
         enemytext = enemy.Text()
-        self.playertext = GAME.boldFont.render(playertext, True, BLACK)
-        self.enemytext = GAME.boldFont.render(enemytext, True, BLACK)
+        self.playertext = GAME.boldFont.render(playertext, True, ROYALBLUE)
+        self.enemytext = GAME.boldFont.render(enemytext, True, ROYALBLUE)
         self.flippedImage.blit(self.playertext, (15, 8))
         self.flippedImage.blit(self.enemytext, (610, 8))
         self.timeBox = pygame.Rect((GAME.SCREENWIDTH/2)-37.5, 55, 75, 25)
