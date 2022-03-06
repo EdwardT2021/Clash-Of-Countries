@@ -1443,6 +1443,7 @@ class Battle:
                     
 
             GAME.Update() #Update the game
+
         for card in self.playerCountries:
             card.Reset()
         for card in self.playerBuffs:
@@ -1475,9 +1476,14 @@ class Battle:
         actions = json.dumps({"Command": "CHANGES", "Args": self.PlayerActions})
         print(actions)
         CONN.Send(actions)
-        self.PlayerActions = [[[hash(self.countries[0]), None], {}, None], [[hash(self.countries[1]), None], {}, None]]   
+        self.PlayerActions = [[[hash(self.countries[0]), None], {}, None], [[hash(self.countries[1]), None], {}, None]]
+        t = Thread(target=LoadScreen, args=["Waiting for confirmation..."])   
         while CONN.Receive()["Command"] != "SUCCESS":
+            for event in pygame.event.get():
+                pass
             continue
+        t.quit()
+        t.join()
         t = Thread(target=LoadScreen, args=["Waiting for enemy..."])
         while CONN.Receive()["Command"] != "CHANGES":
             if t.is_alive():

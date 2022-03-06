@@ -456,6 +456,7 @@ class Battle:
                 try:
                     p1changes = SERVER.receive(self.player1.socket)[1]
                     SERVER.send("SUCCESS", self.player1.socket)
+                    print("sent success to p1")
                     p1received = True
                     print(p1changes)
                 except: 
@@ -464,6 +465,7 @@ class Battle:
                 try:
                     p2changes = SERVER.receive(self.player2.socket)[1]
                     SERVER.send("SUCCESS", self.player2.socket)
+                    print("sent success to p2")
                     p2received = True
                     print(p2changes)
                 except:
