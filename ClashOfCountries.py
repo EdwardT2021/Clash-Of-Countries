@@ -1485,14 +1485,14 @@ class Battle:
         t.quit()
         t.join()
         t = Thread(target=LoadScreen, args=["Waiting for enemy..."])
-        while CONN.Receive()["Command"] != "CHANGES":
-            if t.is_alive():
-                continue
-            else:
-                GAME.Save()
-                sys.exit()
+        data = CONN.Receive()
+        while data["Command"] != "CHANGES":
+            for event in pygame.event.get():
+                pass
+            data = CONN.Receive()
         t.quit()
         t.join()
+        return data["Args"]
 
     def PlayerWins(self):
         timeTaken = self.GameBar.GetBattleTime()
