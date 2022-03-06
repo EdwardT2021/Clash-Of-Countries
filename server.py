@@ -449,8 +449,6 @@ class Battle:
         self.__port = 11035 #Server port
         self.__socket.bind((self.__host, self.__port))
         self.__socket.listen() #Allows the socket to act like a server
-        print(player1.socket.getpeername()[0])
-        print(player2.socket.getpeername()[0])
         p1connected = False
         p2connected = False
         while not (p1connected and p2connected):
@@ -458,18 +456,18 @@ class Battle:
                 player, address = self.__socket.accept()
             except:
                 continue
-            if address == self.player1.socket.getpeername()[0]:
+            if address[0] == self.player1.socket.getpeername()[0]:
                 self.p1socket = player
                 p1connected = True
-                print(f"{player1} connected!")
-            elif address == self.player2.socket.getpeername()[0]:
+                print(f"{player1} connected")
+            elif address[0] == self.player2.socket.getpeername()[0]:
                 self.p2socket = player
                 p2connected = True
                 print(f"{player2} connected")
         player1d = {"EnemyCountries": [], "EnemyBuffs": [], "Enemy": [player1.username, player1.wins, player1.losses, player1.elo], "First": not self.player1first}
         for c in player1.prioritycountries:
             player1d["EnemyCountries"].append(c.ToList())
-        for b in player.prioritybuffs:
+        for b in player1.prioritybuffs:
             player1d["EnemyBuffs"].append(str(b))
         SERVER.send("BATTLE", self.p2socket, player1d)
         player2d = {"EnemyCountries": [], "EnemyBuffs": [], "Enemy": [player2.username, player2.wins, player2.losses, player2.elo], "First": self.player1first}
@@ -489,8 +487,8 @@ class Battle:
             if not p1received:
                 try:
                     print("reachedp1")
-                    p1changes = SERVER.receive(self.player1.socket)[1]
-                    SERVER.send("SUCCESS", self.player1.socket)
+                    p1changes = SERVER.receive(self.p1socket)["Args"]
+                    SERVER.send("SUCCESS", self.p1socket)
                     print("sent success to p1")
                     p1received = True
                     print(p1changes)
