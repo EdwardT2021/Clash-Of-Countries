@@ -444,33 +444,36 @@ class Battle:
         self.player1first = bool(random.randint(0, 1))
         self.player1countries = player1.prioritycountries.copy()
         self.player2countries = player2.prioritycountries.copy()
+        print(f"Battle between {player1.username} and {player2.username} initialised!")
     
     def Run(self):
+        print("Battle running")
         run = True
         p1received = False
         p2received = False
         while run:
             if not p1received:
                 try:
-                    p1changes = self.player1.socket.recv(2048)
-                    self.player1.socket.send(json.dumps({"Command": "SUCCESS"}))
+                    p1changes = SERVER.receive(self.player1.socket)[1]
+                    SERVER.send("SUCCESS", self.player1.socket)
                     p1received = True
+                    print(p1changes)
                 except: 
                     pass
             if not p2received:
                 try:
-                    p2changes = self.player2.socket.recv(2048)
-                    self.player2.socket.send(json.dumps({"Command": "SUCCESS"}))
+                    p2changes = SERVER.receive(self.player2.socket)[1]
+                    SERVER.send("SUCCESS", self.player2.socket)
                     p2received = True
+                    print(p2changes)
                 except:
                     pass
                 
             if not (p1received and p2received):
                 continue
-            self.player1.socket.send(p2changes)
-            self.player2.socket.send(p1changes)
-            p1changes = json.loads(p1changes.decode("UTF-8"))
-            p2changes = json.loads(p2changes.decode("UTF-8"))
+            
+            SERVER.send("CHANGES", self.player1.socket, p2changes)
+            SERVER.send("CHANGES", self.player2.socket, p1changes)
 
             if self.player1first:
                 p1 = self.player1
@@ -632,14 +635,14 @@ class Server: #Class containing server methods and attributes
             thread.start()
         print(f"Server Live at {self.__host, self.__port}")
 
-    def __send(self, command: str, conn: socket.socket, *args): #Sends a message through a socket
+    def send(self, command: str, conn: socket.socket, *args): #Sends a message through a socket
         message = {"Command": command} #Creates dictionary containing the command and any arguments
         if args:
             message["Args"] = args
         encMessage = json.dumps(message).encode("utf-8") #Converts dictionary into json and encodes it using utf-8
         conn.send(encMessage) #Sends the command through the socket
     
-    def __receive(self, conn: socket.socket) -> tuple[str, str]:
+    def receive(self, conn: socket.socket) -> tuple[str, str]:
         data = json.loads(conn.recv(1024).decode("utf-8"))
         command = data["Command"]
         args = data["Args"]
@@ -669,9 +672,9 @@ class Server: #Class containing server methods and attributes
         with self.__loggedInLock: #Uses log in lock. If more than 10000 threads are using this, it will wait until a space is available
             failed = True
             while failed:
-                self.__send("LOGIN", client) #Sends login request
+                self.send("LOGIN", client) #Sends login request
                 print("login request sent")
-                command, info = self.__receive(client) 
+                command, info = self.receive(client) 
                 print(command, info, "received")
                 if command == "SIGNUP": #Received if player wants a new account
                     username, password = info #Splits info into variables
@@ -679,9 +682,9 @@ class Server: #Class containing server methods and attributes
                     try:
                         self.__signup(username, password)
                         failed = False
-                        self.__send("LOGGEDIN", client)
+                        self.send("LOGGEDIN", client)
                     except e.NotUniqueUsernameError:
-                        self.__send("LOGINFAILED", client, "Username not unique!")
+                        self.send("LOGINFAILED", client, "Username not unique!")
                     
                 elif command == "LOGIN": #Attempts to connect to database and match the hashed passwords
                     username, password = info
@@ -693,14 +696,14 @@ class Server: #Class containing server methods and attributes
                             try:
                                 passwordDB = cur.fetchone()[0]
                             except:
-                                self.__send("LOGINFAILED", client)
+                                self.send("LOGINFAILED", client)
                                 conn.close()
                                 sys.exit()
                         except:
                             raise e.DatabaseAccessError
                         if passwordDB == password:
                             failed = False
-                            self.__send("LOGGEDIN", client)
+                            self.send("LOGGEDIN", client)
                             print(f"{address} logged in as {username}!")
                         else:
                             print(f"Login for {address} failed")
@@ -808,9 +811,9 @@ class Server: #Class containing server methods and attributes
         print(f"Handling {player.username}")
         while True:
             if player.Battle is not None:
-                    continue
+                continue
             try:
-                command, info = self.__receive(client)
+                command, info = self.receive(client)
             except:
                 print(f"{player.username} has disconnected")
                 client.close()
@@ -1014,13 +1017,13 @@ class Server: #Class containing server methods and attributes
                 playerd["EnemyCountries"].append(c.ToList())
             for b in player.prioritybuffs:
                 playerd["EnemyBuffs"].append(str(b))
-            self.__send("BATTLE", opponent.socket, playerd)
+            self.send("BATTLE", opponent.socket, playerd)
             oppd = {"EnemyCountries": [], "EnemyBuffs": [], "Enemy": [opponent.username, opponent.wins, opponent.losses, opponent.elo], "First": battle.player1first}
             for c in opponent.prioritycountries:
                 oppd["EnemyCountries"].append(c.ToList())
             for b in opponent.prioritybuffs:
                 oppd["EnemyBuffs"].append(str(b))
-            self.__send("BATTLE", player.socket, oppd)
+            self.send("BATTLE", player.socket, oppd)
             battleThread = Thread(battle.Run)
             self.__battleThreads.append(battleThread)
             battleThread.start()
@@ -1073,7 +1076,7 @@ class Server: #Class containing server methods and attributes
                 card = BalancedCountry(name, production, towns)
             elif subclass == "DEF":
                 card = DefensiveCountry(name, production, towns)
-            self.__send("REWARD", client, [subclass, towns, production, name])
+            self.send("REWARD", client, [subclass, towns, production, name])
             with self.__databaseLock:
                 try:
                     conn = sqlite3.connect("playerData.sqlite3")
@@ -1097,7 +1100,7 @@ class Server: #Class containing server methods and attributes
             stats = ["Towns", "Production", "Attack", "Defense", "SiegeAttack", "SiegeDefense", "Fortification"]
             stat = stats[random.randint(0, len(stats)-1)]
             card = eval(subclass + stat + "Buff()")
-            self.__send("REWARD", client, subclass+stat)
+            self.send("REWARD", client, subclass+stat)
             with self.__databaseLock:
                 try:
                     conn = sqlite3.connect("playerData.sqlite3")

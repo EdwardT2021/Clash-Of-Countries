@@ -2860,12 +2860,13 @@ def Play():
     data = CONN.Receive()
     while data["Command"] != "BATTLE":
         for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    t.quit()
+            if event.type == pygame.QUIT:
+                t.quit()
         if not t.is_alive():
             msg = json.dumps({"Command": "UNMATCHMAKE", "Args": None})
             CONN.Send(msg)
             return
+        data = CONN.Receive()
     battle = data["Args"][0]
     t.quit()
     t.join()
