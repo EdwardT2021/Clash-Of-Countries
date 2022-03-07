@@ -2876,9 +2876,9 @@ def Play():
             CONN.Send(msg)
             return
         data = CONN.Receive()
+    CONN.SetBattleMode()
     t.quit()
     t.join()
-    CONN.SetBattleMode()
     t = Thread(target=LoadScreen, args=["Initialising Battle..."])
     data = CONN.Receive()
     while data["Command"] != "BATTLE":
