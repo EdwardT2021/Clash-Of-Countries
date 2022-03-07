@@ -1023,7 +1023,7 @@ class Connection:
     def Send(self, message: str):
         "Takes a JSON formatted string and sends it to the server"
         self.SOCK.send(message.encode("UTF-8"))
-        print(message, "sent")
+        print(message, "sent to", self.SOCK.getpeername())
     
 
     def Login(self) -> bool:
@@ -2913,6 +2913,7 @@ def Play():
     t.quit()
     t.join()
     battle.Run()
+    CONN.SetNormalMode()
     GAME.Reset()
 
 class LoadObject:

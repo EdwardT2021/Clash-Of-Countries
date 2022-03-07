@@ -487,13 +487,14 @@ class Battle:
             if not p1received:
                 try:
                     print("reachedp1")
-                    p1changes = SERVER.receive(self.p1socket)["Args"]
+                    p1changes = SERVER.receive(self.p1socket)[1]
                     SERVER.send("SUCCESS", self.p1socket)
                     print("sent success to p1")
                     p1received = True
                     print(p1changes)
                 except Exception as e:
                     print(e)
+                    pass
             if not p2received:
                 try:
                     print("reachedp2")
@@ -502,8 +503,8 @@ class Battle:
                     print("sent success to p2")
                     p2received = True
                     print(p2changes)
-                except Exception as e:
-                    print(e)
+                except:
+                    pass
                 
             if not (p1received and p2received):
                 continue
