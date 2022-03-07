@@ -34,3 +34,4 @@ ELIF LOGOUT:
     S: LOGGEDOUT
     
 
+([[[3289046126, 1446199064], {'Infantry': 1, 'Tank': 2, 'Plane': 1, 'Fortification': 1, 'Defense Artillery': 2, 'Attack Artillery': 1}, 1487738998], [[1446199064, 1446199064], {'Infantry': 1, 'Tank': 1, 'Plane': 1, 'Fortification': 1, 'Defense Artillery': 1, 'Attack Artillery': 3}, 3610732516]],)

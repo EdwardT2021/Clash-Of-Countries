@@ -7,5 +7,15 @@
 			"path": "..\\..\\Learning Python\\UsefulScripts"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"MicroPython.executeButton": [
+			{
+				"text": "▶",
+				"tooltip": "Run",
+				"alignment": "left",
+				"command": "extension.executeFile",
+				"priority": 3.5
+			}
+		]
+	}
 }

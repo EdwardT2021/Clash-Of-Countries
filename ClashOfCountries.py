@@ -1495,7 +1495,7 @@ class Battle:
             data = CONN.Receive()
         t.quit()
         t.join()
-        return data["Args"]
+        return data["Args"][0]
 
     def PlayerWins(self):
         timeTaken = self.GameBar.GetBattleTime()

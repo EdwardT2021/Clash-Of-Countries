@@ -444,16 +444,20 @@ class Battle:
         self.player1first = bool(random.randint(0, 1))
         self.player1countries = player1.prioritycountries.copy()
         self.player2countries = player2.prioritycountries.copy()
+        self.player1buffs = player1.prioritybuffs.copy()
+        self.player2buffs = player2.prioritybuffs.copy()
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #Socket specifying using the tcp/ip protocol
         self.__host = socket.gethostbyname(socket.gethostname()) #Server ip address
         self.__port = 11035 #Server port
         self.__socket.bind((self.__host, self.__port))
+        self.__socket.settimeout(1)
         self.__socket.listen() #Allows the socket to act like a server
         p1connected = False
         p2connected = False
         while not (p1connected and p2connected):
             try:
                 player, address = self.__socket.accept()
+                player.settimeout(1)
             except:
                 continue
             if address[0] == self.player1.socket.getpeername()[0]:
@@ -498,8 +502,8 @@ class Battle:
             if not p2received:
                 try:
                     print("reachedp2")
-                    p2changes = SERVER.receive(self.player2.socket)[1]
-                    SERVER.send("SUCCESS", self.player2.socket)
+                    p2changes = SERVER.receive(self.p2socket)[1]
+                    SERVER.send("SUCCESS", self.p2socket)
                     print("sent success to p2")
                     p2received = True
                     print(p2changes)
@@ -509,18 +513,20 @@ class Battle:
             if not (p1received and p2received):
                 continue
             
-            SERVER.send("CHANGES", self.player1.socket, p2changes)
-            SERVER.send("CHANGES", self.player2.socket, p1changes)
+            SERVER.send("CHANGES", self.p1socket, p2changes)
+            SERVER.send("CHANGES", self.p2socket, p1changes)
 
             if self.player1first:
                 p1 = self.player1
                 p2 = self.player2
                 player1countries, player2countries = self.player1countries, self.player2countries
+                player1buffs, player2buffs = self.player1buffs, self.player2buffs
             else:
                 p1 = self.player2
                 p2 = self.player1
                 p1changes, p2changes = p2changes, p1changes
                 player1countries, player2countries = self.player2countries, self.player1countries
+                player1buffs, player2buffs = self.player2buffs, self.player1buffs
             countries = player1countries + player2countries
             
             attacks = []
@@ -536,7 +542,10 @@ class Battle:
                 card.army.AddAttackArtillery(actions[1]["Attack Artillery"])
                 card.fortifications += actions[1]["Fortification"]
                 if actions[2] != None:
-                    card.AddBuff(actions[2])
+                    for i in player1buffs:
+                        if hash(i) == actions[2]:
+                            card.AddBuff(i)
+                            break
                 if actions[0][1] is not None:
                     attacks.append(actions[0])
 
@@ -552,11 +561,16 @@ class Battle:
                 card.army.AddAttackArtillery(actions[1]["Attack Artillery"])
                 card.fortifications += actions[1]["Fortification"]
                 if actions[2] != None:
-                    card.AddBuff(actions[2])
+                    for i in player2buffs:
+                        if hash(i) == actions[2]:
+                            card.AddBuff(i)
+                            break
                 if actions[0][1] is not None:
                     attacks.append(actions[0])
             
             for attack in attacks:
+                cl = None #type: Country
+                c2 = None #type: Country
                 for i in countries:
                     if hash(i) == attack[0]:
                         c1 = i
@@ -678,6 +692,7 @@ class Server: #Class containing server methods and attributes
         message = {"Command": command} #Creates dictionary containing the command and any arguments
         if args:
             message["Args"] = args
+        print("sent", message)
         encMessage = json.dumps(message).encode("utf-8") #Converts dictionary into json and encodes it using utf-8
         conn.send(encMessage) #Sends the command through the socket
     
