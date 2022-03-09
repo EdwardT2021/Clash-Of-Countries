@@ -1004,11 +1004,18 @@ class Connection:
         self.SOCK = s.socket(s.AF_INET, s.SOCK_STREAM)
         self.regularSock = self.SOCK
         self.battleSock = s.socket(s.AF_INET, s.SOCK_STREAM)
-        try:
-            self.SOCK.settimeout(1)
-            self.SOCK.connect((self.HOST, self.PORT))
-        except:
-            raise e.InitialConnectionError
+        self.__PUBLICKEY, self.__PRIVATEKEY = rsa.newkeys(1024)
+        self.SOCK.settimeout(1)
+        failed = True
+        errorcount = 0
+        while failed:
+            try:
+                self.SOCK.connect((self.HOST, self.PORT))
+                failed = False
+            except:
+                errorcount += 1
+            if errorcount == 15:
+                raise e.InitialConnectionError
         self.SOCK.send(self.__PUBLICKEY.save_pkcs1("PEM"))
         failed = True
         while failed:
@@ -1036,7 +1043,7 @@ class Connection:
 
     def Send(self, message: str):
         "Takes a JSON formatted string and sends it to the server"
-        self.SOCK.send(message.encode("UTF-8"))
+        self.SOCK.send(rsa.encrypt(message.encode("utf-8"), self.__SERVERKEY))
         print(message, "sent to", self.SOCK.getpeername())
     
 

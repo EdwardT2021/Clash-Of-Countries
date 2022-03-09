@@ -598,13 +598,16 @@ class Battle:
         probabilityofloserwin = ELOCALC.calculateProbabilityOfWin(loser.elo, winner.elo)
         winner.elo = ELOCALC.calculateNewElo(winner.elo, probabilityofwinnerwin, 1)
         loser.elo = ELOCALC.calculateNewElo(loser.elo, probabilityofloserwin, 0)
-        winmsg = json.dumps({"Command": "ELO", "Args": winner.elo})
-        lossmsg = json.dumps({"Command": "ELO", "Args": loser.elo})
-        winner.socket.send(winmsg.encode("UTF-8"))
-        loser.socket.send(lossmsg.encode("UTF-8"))
-        SERVER.getReward(winner)
-        msg = json.dumps({"Command": "REWARD", "Args": None})
-        loser.socket.send(msg.encode("UTF-8"))
+        if winner == self.player1:
+            winsock = self.p1socket
+            losesock = self.p2socket
+        else:
+            winsock = self.p2socket
+            losesock = self.p1socket
+        SERVER.send("ELO", winsock, winner.key, winner.elo)
+        SERVER.send("ELO", losesock, loser.key, loser.elo)
+        SERVER.getReward(winsock, winner)
+        SERVER.send("REWARD", losesock, loser.key, None)
         winner.Battle = None
         loser.Battle = None
 
@@ -653,9 +656,9 @@ class Server: #Class containing server methods and attributes
 
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #Socket specifying using the tcp/ip protocol
         self.__socket.settimeout(1)
-        self.__host = socket.gethostbyname(socket.gethostname()) #Server ip address
+        self.__host = "localhost" #socket.gethostbyname(socket.gethostname()) #Server ip address
         self.__port = 11034 #Server port
-        self.__pubkey, self.__privkey = rsa.newkeys(2048)
+        self.__pubkey, self.__privkey = rsa.newkeys(1024)
         self.__CountryNames = [] #type: list[str]
         with open("countries.txt", "r") as f:
             for line in f.readlines():
@@ -694,7 +697,7 @@ class Server: #Class containing server methods and attributes
             message["Args"] = args
         print("sent", message)
         encMessage = json.dumps(message).encode("utf-8") #Converts dictionary into json and encodes it using utf-8
-        conn.send(encMessage) #Sends the command through the socket
+        conn.send(rsa.encrypt(encMessage, key)) #Sends the command through the socket
     
     def receive(self, conn: socket.socket) -> tuple[str, str]:
         data = conn.recv(2048)
@@ -766,15 +769,16 @@ class Server: #Class containing server methods and attributes
                         try:
                             conn = sqlite3.connect("playerData.sqlite3")
                             cur = conn.cursor()
-                            cur.execute(f"SELECT password FROM Player WHERE username = '{username}';")
-                            try:
-                                passwordDB = cur.fetchone()[0]
-                            except:
-                                self.send("LOGINFAILED", client, key)
-                                conn.close()
-                                sys.exit()
                         except:
                             raise e.DatabaseAccessError
+                        cur.execute(f"SELECT password FROM Player WHERE username = '{username}';")
+                        try:
+                            passwordDB = cur.fetchone()[0]
+                        except:
+                            self.send("LOGINFAILED", client, key)
+                            conn.close()
+                            sys.exit()
+                    
                         if passwordDB == password:
                             failed = False
                             self.send("LOGGEDIN", client, key)
@@ -856,7 +860,7 @@ class Server: #Class containing server methods and attributes
             except:
                 raise e.DatabaseAccessError
             try:
-                query = f"INSERT INTO Player VALUES ('{username}', {password}, 0, 0, 0, 1000);"
+                query = f"INSERT INTO Player VALUES ('{username}', '{password}', 0, 0, 0, 1000);"
                 cur.execute(query)
                 conn.commit()
                 c1 = BalancedCountry("Angola", 25, 40) 
