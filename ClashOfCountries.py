@@ -16,8 +16,8 @@ import rsa
 
 # Below are the colour values used
 
-BLUE = "#004aad"
-ROYALBLUE = "#5271ff"
+BLUE = "#356288"
+ROYALBLUE = "#aacfdd"
 BLACK = "#000000"
 WHITE = "#ffffff"
 
@@ -916,7 +916,7 @@ class AggressiveCountry(Country):
             self.army = EnemyAggressiveArmy()
         self.fortifications = 3
         self.basefortifications = 3
-        card = pygame.image.load(resource_path("art\\AggressiveCountryCard.png")).convert_alpha()
+        card = pygame.image.load(resource_path("art\\AggressiveCountry.png")).convert_alpha()
         card = pygame.transform.scale(card, self.cardSize)
         self.flippedImage = pygame.Surface(self.cardSize).convert_alpha()
         self.flippedImage.blit(card, (0, 0))
@@ -932,7 +932,7 @@ class BalancedCountry(Country):
             self.army = EnemyBalancedArmy()
         self.fortifications = 4
         self.basefortifications = 4
-        card = pygame.image.load(resource_path("art\\BalancedCountryCard.png")).convert_alpha()
+        card = pygame.image.load(resource_path("art\\BalancedCountry.png")).convert_alpha()
         card = pygame.transform.scale(card, self.cardSize)
         self.flippedImage = pygame.Surface(self.cardSize).convert_alpha()
         self.flippedImage.blit(card, (0, 0))
@@ -948,7 +948,7 @@ class DefensiveCountry(Country):
             self.army = EnemyDefensiveArmy()
         self.fortifications = 5
         self.basefortifications = 5
-        card = pygame.image.load(resource_path("art\\DefensiveCountryCard.png")).convert_alpha()
+        card = pygame.image.load(resource_path("art\\DefensiveCountry.png")).convert_alpha()
         card = pygame.transform.scale(card, self.cardSize)
         self.flippedImage = pygame.Surface(self.cardSize).convert_alpha()
         self.flippedImage.blit(card, (0, 0))
@@ -1002,7 +1002,8 @@ class Connection:
         self.HOST = "localhost"
         self.PORT = 11034
         self.SOCK = s.socket(s.AF_INET, s.SOCK_STREAM)
-        self.__PUBLICKEY, self.__PRIVATEKEY = rsa.newkeys(2048)
+        self.regularSock = self.SOCK
+        self.battleSock = s.socket(s.AF_INET, s.SOCK_STREAM)
         try:
             self.SOCK.settimeout(1)
             self.SOCK.connect((self.HOST, self.PORT))
@@ -1035,10 +1036,8 @@ class Connection:
 
     def Send(self, message: str):
         "Takes a JSON formatted string and sends it to the server"
-        asBytes = bytearray(message, "utf-8")
-        new = rsa.encrypt(asBytes, self.__SERVERKEY)
-        self.SOCK.send(new)
-        print(message, "sent")
+        self.SOCK.send(message.encode("UTF-8"))
+        print(message, "sent to", self.SOCK.getpeername())
     
 
     def Login(self) -> bool:
@@ -1068,6 +1067,22 @@ class Connection:
         d = {"Command": "ADDBUFF", "Args": a}
         j = json.dumps(d)
         self.Send(j)
+    
+    def SetBattleMode(self):
+        self.PORT = 11035
+        self.SOCK = self.battleSock
+        self.SOCK.settimeout(1)
+        connected = False
+        while not connected:
+            try:
+                self.SOCK.connect((self.HOST, self.PORT))
+                connected = True
+            except:
+                continue
+    
+    def SetNormalMode(self):
+        self.PORT = 11034
+        self.SOCK = self.regularSock
         
 ##################################################################################
 
@@ -1489,7 +1504,6 @@ class Battle:
             self.PlayerActions[i][2] = hash(self.playerCountries[i].Buff)
             self.PlayerActions[i][1] = self.playerCountries[i].UnitsBought
         actions = json.dumps({"Command": "CHANGES", "Args": self.PlayerActions})
-        print(actions)
         CONN.Send(actions)
         self.PlayerActions = [[[hash(self.countries[0]), None], {}, None], [[hash(self.countries[1]), None], {}, None]]
         t = Thread(target=LoadScreen, args=["Waiting for confirmation..."])   
@@ -1507,7 +1521,7 @@ class Battle:
             data = CONN.Receive()
         t.quit()
         t.join()
-        return data["Args"]
+        return data["Args"][0]
 
     def PlayerWins(self):
         t = Thread(target=LoadScreen, args=["Getting rewards..."])
@@ -2176,8 +2190,8 @@ class GameBar:
         self.enemy = enemy
         playertext = player.Text()
         enemytext = enemy.Text()
-        self.playertext = GAME.boldFont.render(playertext, True, BLACK)
-        self.enemytext = GAME.boldFont.render(enemytext, True, BLACK)
+        self.playertext = GAME.boldFont.render(playertext, True, ROYALBLUE)
+        self.enemytext = GAME.boldFont.render(enemytext, True, ROYALBLUE)
         self.flippedImage.blit(self.playertext, (15, 8))
         self.flippedImage.blit(self.enemytext, (610, 8))
         self.timeBox = pygame.Rect((GAME.SCREENWIDTH/2)-37.5, 55, 75, 25)
@@ -2847,6 +2861,20 @@ def Play():
     CONN.Send(json.dumps(msg))
     t = Thread(target=LoadScreen, args=["Matchmaking..."])
     data = CONN.Receive()
+    while data["Command"] != "MATCHMADE":
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                t.quit()
+        if not t.is_alive():
+            msg = json.dumps({"Command": "UNMATCHMAKE", "Args": None})
+            CONN.Send(msg)
+            return
+        data = CONN.Receive()
+    CONN.SetBattleMode()
+    t.quit()
+    t.join()
+    t = Thread(target=LoadScreen, args=["Initialising Battle..."])
+    data = CONN.Receive()
     while data["Command"] != "BATTLE":
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -2857,9 +2885,6 @@ def Play():
             return
         data = CONN.Receive()
     battle = data["Args"][0]
-    t.quit()
-    t.join()
-    t = Thread(target=LoadScreen, args=["Initialising Battle..."])
     enemyCountries = battle["EnemyCountries"]
     enemyBuffs = battle["EnemyBuffs"]
     enemyCountryObjects = []
@@ -2882,6 +2907,7 @@ def Play():
     t.quit()
     t.join()
     battle.Run()
+    CONN.SetNormalMode()
     GAME.Reset()
 
 class LoadObject:

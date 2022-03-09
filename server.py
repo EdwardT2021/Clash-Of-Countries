@@ -427,7 +427,7 @@ class Player:
         self.losses = losses #type: int
         self.draws = draws #type: int
         self.elo = elo #type: int
-        self.Battle = None
+        self.Battle = False
         self.socket = socket #type: socket.socket
         self.key = key
     
@@ -439,13 +439,49 @@ class Battle:
     def __init__(self, player1: Player, player2: Player):
         self.player1 = player1
         self.player2 = player2
-        self.player1.Battle = self
-        self.player2.Battle = self
+        self.player1.Battle = True
+        self.player2.Battle = True
         self.player1first = bool(random.randint(0, 1))
         self.player1countries = player1.prioritycountries.copy()
         self.player2countries = player2.prioritycountries.copy()
+        self.player1buffs = player1.prioritybuffs.copy()
+        self.player2buffs = player2.prioritybuffs.copy()
+        self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #Socket specifying using the tcp/ip protocol
+        self.__host = socket.gethostbyname(socket.gethostname()) #Server ip address
+        self.__port = 11035 #Server port
+        self.__socket.bind((self.__host, self.__port))
+        self.__socket.settimeout(1)
+        self.__socket.listen() #Allows the socket to act like a server
+        p1connected = False
+        p2connected = False
+        while not (p1connected and p2connected):
+            try:
+                player, address = self.__socket.accept()
+                player.settimeout(1)
+            except:
+                continue
+            if address[0] == self.player1.socket.getpeername()[0]:
+                self.p1socket = player
+                p1connected = True
+                print(f"{player1} connected")
+            elif address[0] == self.player2.socket.getpeername()[0]:
+                self.p2socket = player
+                p2connected = True
+                print(f"{player2} connected")
+        player1d = {"EnemyCountries": [], "EnemyBuffs": [], "Enemy": [player1.username, player1.wins, player1.losses, player1.elo], "First": not self.player1first}
+        for c in player1.prioritycountries:
+            player1d["EnemyCountries"].append(c.ToList())
+        for b in player1.prioritybuffs:
+            player1d["EnemyBuffs"].append(str(b))
+        SERVER.send("BATTLE", self.p2socket, player1d)
+        player2d = {"EnemyCountries": [], "EnemyBuffs": [], "Enemy": [player2.username, player2.wins, player2.losses, player2.elo], "First": self.player1first}
+        for c in player2.prioritycountries:
+            player2d["EnemyCountries"].append(c.ToList())
+        for b in player2.prioritybuffs:
+             player2d["EnemyBuffs"].append(str(b))
+        SERVER.send("BATTLE", self.p1socket, player2d)
         print(f"Battle between {player1.username} and {player2.username} initialised!")
-    
+                
     def Run(self):
         print("Battle running")
         run = True
@@ -454,17 +490,20 @@ class Battle:
         while run:
             if not p1received:
                 try:
-                    p1changes = SERVER.receive(self.player1.socket)[1]
-                    SERVER.send("SUCCESS", self.player1.socket)
+                    print("reachedp1")
+                    p1changes = SERVER.receive(self.p1socket)[1]
+                    SERVER.send("SUCCESS", self.p1socket)
                     print("sent success to p1")
                     p1received = True
                     print(p1changes)
-                except: 
+                except Exception as e:
+                    print(e)
                     pass
             if not p2received:
                 try:
-                    p2changes = SERVER.receive(self.player2.socket)[1]
-                    SERVER.send("SUCCESS", self.player2.socket)
+                    print("reachedp2")
+                    p2changes = SERVER.receive(self.p2socket)[1]
+                    SERVER.send("SUCCESS", self.p2socket)
                     print("sent success to p2")
                     p2received = True
                     print(p2changes)
@@ -474,18 +513,20 @@ class Battle:
             if not (p1received and p2received):
                 continue
             
-            SERVER.send("CHANGES", self.player1.socket, p2changes)
-            SERVER.send("CHANGES", self.player2.socket, p1changes)
+            SERVER.send("CHANGES", self.p1socket, p2changes)
+            SERVER.send("CHANGES", self.p2socket, p1changes)
 
             if self.player1first:
                 p1 = self.player1
                 p2 = self.player2
                 player1countries, player2countries = self.player1countries, self.player2countries
+                player1buffs, player2buffs = self.player1buffs, self.player2buffs
             else:
                 p1 = self.player2
                 p2 = self.player1
                 p1changes, p2changes = p2changes, p1changes
                 player1countries, player2countries = self.player2countries, self.player1countries
+                player1buffs, player2buffs = self.player2buffs, self.player1buffs
             countries = player1countries + player2countries
             
             attacks = []
@@ -501,7 +542,10 @@ class Battle:
                 card.army.AddAttackArtillery(actions[1]["Attack Artillery"])
                 card.fortifications += actions[1]["Fortification"]
                 if actions[2] != None:
-                    card.AddBuff(actions[2])
+                    for i in player1buffs:
+                        if hash(i) == actions[2]:
+                            card.AddBuff(i)
+                            break
                 if actions[0][1] is not None:
                     attacks.append(actions[0])
 
@@ -517,11 +561,16 @@ class Battle:
                 card.army.AddAttackArtillery(actions[1]["Attack Artillery"])
                 card.fortifications += actions[1]["Fortification"]
                 if actions[2] != None:
-                    card.AddBuff(actions[2])
+                    for i in player2buffs:
+                        if hash(i) == actions[2]:
+                            card.AddBuff(i)
+                            break
                 if actions[0][1] is not None:
                     attacks.append(actions[0])
             
             for attack in attacks:
+                cl = None #type: Country
+                c2 = None #type: Country
                 for i in countries:
                     if hash(i) == attack[0]:
                         c1 = i
@@ -544,6 +593,7 @@ class Battle:
                     run = False
                     winner = self.player1
                     loser = self.player2
+
         probabilityofwinnerwin = ELOCALC.calculateProbabilityOfWin(winner.elo, loser.elo)
         probabilityofloserwin = ELOCALC.calculateProbabilityOfWin(loser.elo, winner.elo)
         winner.elo = ELOCALC.calculateNewElo(winner.elo, probabilityofwinnerwin, 1)
@@ -602,7 +652,8 @@ class Server: #Class containing server methods and attributes
     def __init__(self):
 
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #Socket specifying using the tcp/ip protocol
-        self.__host = "localhost" #socket.gethostbyname(socket.gethostname()) #Server ip address
+        self.__socket.settimeout(1)
+        self.__host = socket.gethostbyname(socket.gethostname()) #Server ip address
         self.__port = 11034 #Server port
         self.__pubkey, self.__privkey = rsa.newkeys(2048)
         self.__CountryNames = [] #type: list[str]
@@ -641,9 +692,8 @@ class Server: #Class containing server methods and attributes
         message = {"Command": command} #Creates dictionary containing the command and any arguments
         if args:
             message["Args"] = args
-        message = json.dumps(message).encode("utf-8") #Converts dictionary into json and encodes it using utf-8
-        encMessage = rsa.encrypt(message, key)
         print("sent", message)
+        encMessage = json.dumps(message).encode("utf-8") #Converts dictionary into json and encodes it using utf-8
         conn.send(encMessage) #Sends the command through the socket
     
     def receive(self, conn: socket.socket) -> tuple[str, str]:
@@ -658,7 +708,10 @@ class Server: #Class containing server methods and attributes
     def __accept(self): #Accepts new connections
         print("Accepting Connections")
         while True:
-            client, address = self.__socket.accept()
+            try:
+                client, address = self.__socket.accept()
+            except:
+                continue
             if address not in open("banlist.txt", "r"): #Checks if IP is banned
                 print(f"Connection from {address} accepted!")
                 self.__handlerThreads.append(Thread(self.__login, client, address)) #Creates a new thread to handle the player
@@ -690,7 +743,14 @@ class Server: #Class containing server methods and attributes
             while failed:
                 self.send("LOGIN", client, key) #Sends login request
                 print("login request sent")
-                command, info = self.receive(client) 
+                received = False
+                while not received:
+                    try:
+                        command, info = self.receive(client) 
+                        received = True
+                    except:
+                        pass
+                print(command, info, "received")
                 if command == "SIGNUP": #Received if player wants a new account
                     username, password = info #Splits info into variables
                     try:
@@ -823,12 +883,9 @@ class Server: #Class containing server methods and attributes
     
     def __handle(self, client: socket.socket, player: Player): #Function that handles each
         print(f"Handling {player.username}")
+        disconnectCounter = 0
         while True:
-            if player.Battle is not None:
-                continue
-            try:
-                command, info = self.receive(client)
-            except:
+            if disconnectCounter >= 100:
                 print(f"{player.username} has disconnected")
                 client.close()
                 elo = player.elo
@@ -845,6 +902,11 @@ class Server: #Class containing server methods and attributes
                 except:
                     pass
                 break
+            try:
+                command, info = self.receive(client)
+                print(command, info, " received in handle")
+            except:
+                continue
             if command == "END":
                 print(f"{player.username} has signed off")
                 client.close()
@@ -1025,19 +1087,9 @@ class Server: #Class containing server methods and attributes
                 opponent = self.__binarySearchMatchmake(pool, value, 0, len(pool)-1)
                 pool.remove(opponent)
             print(player, opponent, "are battling!")
-            battle = Battle(player, opponent)
-            playerd = {"EnemyCountries": [], "EnemyBuffs": [], "Enemy": [player.username, player.wins, player.losses, player.elo], "First": not battle.player1first}
-            for c in player.prioritycountries:
-                playerd["EnemyCountries"].append(c.ToList())
-            for b in player.prioritybuffs:
-                playerd["EnemyBuffs"].append(str(b))
-            self.send("BATTLE", opponent.socket, opponent.key, playerd)
-            oppd = {"EnemyCountries": [], "EnemyBuffs": [], "Enemy": [opponent.username, opponent.wins, opponent.losses, opponent.elo], "First": battle.player1first}
-            for c in opponent.prioritycountries:
-                oppd["EnemyCountries"].append(c.ToList())
-            for b in opponent.prioritybuffs:
-                oppd["EnemyBuffs"].append(str(b))
-            self.send("BATTLE", player.socket, player.key, oppd)
+            self.send("MATCHMADE", player.socket)
+            self.send("MATCHMADE", opponent.socket)
+            battle = Battle(player, opponent) 
             battleThread = Thread(battle.Run)
             self.__battleThreads.append(battleThread)
             battleThread.start()
