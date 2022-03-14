@@ -5,6 +5,7 @@ import sys
 import random
 import ServerErrors as e
 import json 
+import rsa
 
 #The following hash is not cryptographically secure, and should only be used to compare objects
 def Hash(string: str) -> int:
@@ -415,7 +416,7 @@ class DefensiveCountry(Country):
 
 class Player:
 
-    def __init__(self, username, countries=[], prioritycountries=[], buffs=[], prioritybuffs=[], wins=0, draws=0, losses=0, elo=0, socket=None):
+    def __init__(self, username, countries=[], prioritycountries=[], buffs=[], prioritybuffs=[], wins=0, draws=0, losses=0, elo=0, socket=None, key=None):
         "Player object containing relevant player data"
         self.username = username #type: str
         self.countries = countries #type: list[Country]
@@ -428,8 +429,7 @@ class Player:
         self.elo = elo #type: int
         self.Battle = False
         self.socket = socket #type: socket.socket
-        print(prioritycountries)
-        print(prioritybuffs)
+        self.key = key
     
     def __repr__(self) -> str:
         return self.username
@@ -598,13 +598,16 @@ class Battle:
         probabilityofloserwin = ELOCALC.calculateProbabilityOfWin(loser.elo, winner.elo)
         winner.elo = ELOCALC.calculateNewElo(winner.elo, probabilityofwinnerwin, 1)
         loser.elo = ELOCALC.calculateNewElo(loser.elo, probabilityofloserwin, 0)
-        winmsg = json.dumps({"Command": "ELO", "Args": winner.elo})
-        lossmsg = json.dumps({"Command": "ELO", "Args": loser.elo})
-        winner.socket.send(winmsg.encode("UTF-8"))
-        loser.socket.send(lossmsg.encode("UTF-8"))
-        SERVER.getReward(winner)
-        msg = json.dumps({"Command": "REWARD", "Args": None})
-        loser.socket.send(msg.encode("UTF-8"))
+        if winner == self.player1:
+            winsock = self.p1socket
+            losesock = self.p2socket
+        else:
+            winsock = self.p2socket
+            losesock = self.p1socket
+        SERVER.send("ELO", winsock, winner.key, winner.elo)
+        SERVER.send("ELO", losesock, loser.key, loser.elo)
+        SERVER.getReward(winsock, winner)
+        SERVER.send("REWARD", losesock, loser.key, None)
         winner.Battle = None
         loser.Battle = None
 
@@ -653,9 +656,9 @@ class Server: #Class containing server methods and attributes
 
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #Socket specifying using the tcp/ip protocol
         self.__socket.settimeout(1)
-        self.__host = socket.gethostbyname(socket.gethostname()) #Server ip address
+        self.__host = "localhost" #socket.gethostbyname(socket.gethostname()) #Server ip address
         self.__port = 11034 #Server port
-
+        self.__pubkey, self.__privkey = rsa.newkeys(1024)
         self.__CountryNames = [] #type: list[str]
         with open("countries.txt", "r") as f:
             for line in f.readlines():
@@ -688,16 +691,18 @@ class Server: #Class containing server methods and attributes
             thread.start()
         print(f"Server Live at {self.__host, self.__port}")
 
-    def send(self, command: str, conn: socket.socket, *args): #Sends a message through a socket
+    def send(self, command: str, conn: socket.socket, key: rsa.PublicKey, *args): #Sends a message through a socket
         message = {"Command": command} #Creates dictionary containing the command and any arguments
         if args:
             message["Args"] = args
         print("sent", message)
         encMessage = json.dumps(message).encode("utf-8") #Converts dictionary into json and encodes it using utf-8
-        conn.send(encMessage) #Sends the command through the socket
+        conn.send(rsa.encrypt(encMessage, key)) #Sends the command through the socket
     
     def receive(self, conn: socket.socket) -> tuple[str, str]:
-        data = json.loads(conn.recv(1024).decode("utf-8"))
+        data = conn.recv(2048)
+        new = rsa.decrypt(data, self.__privkey)
+        data = json.loads(new.decode("utf-8"))
         command = data["Command"]
         args = data["Args"]
         print(f"Received {command}: {args}")
@@ -729,7 +734,17 @@ class Server: #Class containing server methods and attributes
         with self.__loggedInLock: #Uses log in lock. If more than 10000 threads are using this, it will wait until a space is available
             failed = True
             while failed:
-                self.send("LOGIN", client) #Sends login request
+                try:
+                    data = client.recv(4096)
+                    servkey = self.__pubkey.save_pkcs1("PEM")
+                    client.send(servkey)
+                except:
+                    continue
+                key = rsa.PublicKey.load_pkcs1(data, "PEM")
+                failed = False
+            failed = True
+            while failed:
+                self.send("LOGIN", client, key) #Sends login request
                 print("login request sent")
                 received = False
                 while not received:
@@ -741,13 +756,12 @@ class Server: #Class containing server methods and attributes
                 print(command, info, "received")
                 if command == "SIGNUP": #Received if player wants a new account
                     username, password = info #Splits info into variables
-                    password = int(password)
                     try:
                         self.__signup(username, password)
                         failed = False
-                        self.send("LOGGEDIN", client)
+                        self.send("LOGGEDIN", client, key)
                     except e.NotUniqueUsernameError:
-                        self.send("LOGINFAILED", client, "Username not unique!")
+                        self.send("LOGINFAILED", client, key, "Username not unique!")
                     
                 elif command == "LOGIN": #Attempts to connect to database and match the hashed passwords
                     username, password = info
@@ -755,18 +769,19 @@ class Server: #Class containing server methods and attributes
                         try:
                             conn = sqlite3.connect("playerData.sqlite3")
                             cur = conn.cursor()
-                            cur.execute(f"SELECT password FROM Player WHERE username = '{username}';")
-                            try:
-                                passwordDB = cur.fetchone()[0]
-                            except:
-                                self.send("LOGINFAILED", client)
-                                conn.close()
-                                sys.exit()
                         except:
                             raise e.DatabaseAccessError
+                        cur.execute(f"SELECT password FROM Player WHERE username = '{username}';")
+                        try:
+                            passwordDB = cur.fetchone()[0]
+                        except:
+                            self.send("LOGINFAILED", client, key)
+                            conn.close()
+                            sys.exit()
+                    
                         if passwordDB == password:
                             failed = False
-                            self.send("LOGGEDIN", client)
+                            self.send("LOGGEDIN", client, key)
                             print(f"{address} logged in as {username}!")
                         else:
                             print(f"Login for {address} failed")
@@ -830,7 +845,7 @@ class Server: #Class containing server methods and attributes
                             priorityblist.append(b)
                 conn.close()
 
-            player = Player(pname, clist, priorityclist, blist, priorityblist, pwins, pdraws, plosses, pelo, client)
+            player = Player(pname, clist, priorityclist, blist, priorityblist, pwins, pdraws, plosses, pelo, client, key)
             thread = Thread(self.__handle, client, player) #Creates a handle thread
             
             thread.start() #Not added to handlerThreads as is handled by login thread which is in handlerThreads
@@ -845,7 +860,7 @@ class Server: #Class containing server methods and attributes
             except:
                 raise e.DatabaseAccessError
             try:
-                query = f"INSERT INTO Player VALUES ('{username}', {password}, 0, 0, 0, 1000);"
+                query = f"INSERT INTO Player VALUES ('{username}', '{password}', 0, 0, 0, 1000);"
                 cur.execute(query)
                 conn.commit()
                 c1 = BalancedCountry("Angola", 25, 40) 
@@ -1131,7 +1146,7 @@ class Server: #Class containing server methods and attributes
                 card = BalancedCountry(name, production, towns)
             elif subclass == "DEF":
                 card = DefensiveCountry(name, production, towns)
-            self.send("REWARD", client, [subclass, towns, production, name])
+            self.send("REWARD", client, player.key, [subclass, towns, production, name])
             with self.__databaseLock:
                 try:
                     conn = sqlite3.connect("playerData.sqlite3")
@@ -1155,7 +1170,7 @@ class Server: #Class containing server methods and attributes
             stats = ["Towns", "Production", "Attack", "Defense", "SiegeAttack", "SiegeDefense", "Fortification"]
             stat = stats[random.randint(0, len(stats)-1)]
             card = eval(subclass + stat + "Buff()")
-            self.send("REWARD", client, subclass+stat)
+            self.send("REWARD", client, player.key, subclass+stat)
             with self.__databaseLock:
                 try:
                     conn = sqlite3.connect("playerData.sqlite3")

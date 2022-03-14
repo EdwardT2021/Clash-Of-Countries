@@ -17,6 +17,16 @@
 				"priority": 3.5
 			}
 		],
+<<<<<<< HEAD
+=======
+		"python.autoComplete.extraPaths": [
+			"c:/Users/172159/.vscode/extensions/rt-thread.rt-thread-micropython-1.0.8/microExamples/code-completion"
+		],
+		"python.linting.pylintArgs": [
+			"--init-hook",
+			"import sys; sys.path.append('c:/Users/172159/.vscode/extensions/rt-thread.rt-thread-micropython-1.0.8/microExamples/code-completion')"
+		],
+>>>>>>> e39ef2f5a18f05603603ff13273171dee20cce88
 		"MicroPython.syncButton": [
 			{
 				"text": "$(sync)",
@@ -25,6 +35,12 @@
 				"command": "extension.execute",
 				"priority": 4
 			}
+<<<<<<< HEAD
+=======
+		],
+		"python.analysis.extraPaths": [
+			"c:/Users/172159/.vscode/extensions/rt-thread.rt-thread-micropython-1.0.8/microExamples/code-completion"
+>>>>>>> e39ef2f5a18f05603603ff13273171dee20cce88
 		]
 	}
 }

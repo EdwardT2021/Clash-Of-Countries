@@ -6,10 +6,13 @@ from os import path
 import sys
 import pickle
 from time import time
-from math import log10, sin, cos, exp, tan, sqrt
+from math import log10, sin, cos, pow
 import json
 from hashlib import sha256
 import threading
+import matplotlib.pyplot as plot
+import numpy as np
+import rsa
 
 # Below are the colour values used
 
@@ -1001,28 +1004,46 @@ class Connection:
         self.SOCK = s.socket(s.AF_INET, s.SOCK_STREAM)
         self.regularSock = self.SOCK
         self.battleSock = s.socket(s.AF_INET, s.SOCK_STREAM)
-        try:
-            self.SOCK.settimeout(1)
-            self.SOCK.connect((self.HOST, self.PORT))
-        except:
-            raise e.InitialConnectionError
+        self.__PUBLICKEY, self.__PRIVATEKEY = rsa.newkeys(1024)
+        self.SOCK.settimeout(1)
+        failed = True
+        errorcount = 0
+        while failed:
+            try:
+                self.SOCK.connect((self.HOST, self.PORT))
+                failed = False
+            except:
+                errorcount += 1
+            if errorcount == 15:
+                raise e.InitialConnectionError
+        self.SOCK.send(self.__PUBLICKEY.save_pkcs1("PEM"))
+        failed = True
+        while failed:
+            try:
+                data = self.SOCK.recv(2048)
+                self.__SERVERKEY = rsa.PublicKey.load_pkcs1(data)
+            except:
+                continue
+            failed = False
         t.quit()
         t.join()
 
     def Receive(self) -> dict:
         "Receive a decoded dictionary containing necessary arguments"
         try:
-            data = self.SOCK.recv(1024)
+            data = self.SOCK.recv(2048)
         except:
             return {"Command": None, "Args": None}
-        dictionary = json.loads(data.decode("UTF-8"))
+        data = rsa.decrypt(data, self.__PRIVATEKEY)
+        asString = data.decode("utf-8")
+        dictionary = json.loads(asString)
         print(f"{dictionary} received")
         return dictionary
 
 
     def Send(self, message: str):
         "Takes a JSON formatted string and sends it to the server"
-        self.SOCK.send(message.encode("UTF-8"))
+        self.SOCK.send(rsa.encrypt(message.encode("utf-8"), self.__SERVERKEY))
         print(message, "sent to", self.SOCK.getpeername())
     
 
@@ -1074,7 +1095,7 @@ class Connection:
 
 class Player:
 
-    def __init__(self, username="", password=0, countries=[], buffs=[], wins=0, losses=0, elo=0):
+    def __init__(self, username="", password=0, countries=[], buffs=[], wins=0, losses=0, elo=0, pastElos=[]):
         "Player object containing relevant player data"
         self.username = username #type: str
         self.password = password #type: str
@@ -1083,6 +1104,10 @@ class Player:
         self.wins = wins #type: int
         self.losses = losses #type: int
         self.elo = elo #type: int
+        if pastElos == []:
+            for i in range(12):
+                pastElos.append(self.elo)
+        self.pastElos = pastElos
         self.prioritycountries = [] #type: list[Country]
         self.prioritybuffs = [] #type: list[Buff]
     
@@ -1092,7 +1117,7 @@ class Player:
     
     def SetPassword(self, password: str):
         "Takes a plaintext password, then hashes and stores it in the password attribute"
-        self.password = Hash(password)
+        self.password = sha256(password.encode("utf-8"), usedforsecurity=True).hexdigest()
     
     def SetUsername(self, username: str):
         self.username = username
@@ -1111,6 +1136,11 @@ class Player:
             old = priority.pop(0)
             old.priority = False
             CONN.Send(json.dumps({"Command": "DEPRIORITISECOUNTRY", "Args": [hash(old)]}))
+    
+    def ChangeElo(self, newElo: int):
+        self.pastElos.remove(0)
+        self.pastElos.append(self.elo)
+        self.elo = newElo
 
     def __getstate__(self) -> dict:
         return self.__dict__
@@ -1236,6 +1266,9 @@ class Game:
     
     def getevent(self) -> list:
         return pygame.event.get()
+    
+    def DrawEloGraph(self):
+        pass
         
 #####################################################################################
 
@@ -1498,6 +1531,7 @@ class Battle:
         return data["Args"][0]
 
     def PlayerWins(self):
+        t = Thread(target=LoadScreen, args=["Getting rewards..."])
         timeTaken = self.GameBar.GetBattleTime()
         timeTaken = GAME.smallBoldFont.render(timeTaken, True, WHITE)
         enemyString = self.GameBar.enemy.username
@@ -1505,7 +1539,14 @@ class Battle:
         if isinstance(self, TutorialBattle):
             eloGain = "0"
         else:
-            eloGain = self.GetEloGain(win=True)
+            data = CONN.Receive()
+            while data["Command"] != "ELO":
+                data = CONN.Receive()
+                continue
+            elo = data["Args"][0]
+            eloGain = elo - GAME.PLAYER.elo
+            GAME.PLAYER.ChangeElo(elo)
+            elo = str(elo)
         rewardCard = self.GetRewards(win=True) #type: Card
         if isinstance(rewardCard, Country):
             CONN.AddCountry(rewardCard)
@@ -1516,6 +1557,8 @@ class Battle:
         rewardCard.Flip()
         rewardCard.SetDetails()
         timer = 0
+        t.quit()
+        t.join()
         while timer <= 500:
             timer += 1
             GAME.screen.blit(self.victoryScreen, (0, 0))
@@ -1544,7 +1587,7 @@ class Battle:
                 continue
             elo = data["Args"]
             eloGain = elo - GAME.PLAYER.elo
-            GAME.PLAYER.elo = elo
+            GAME.PLAYER.ChangeElo(elo)
             elo = str(elo)
         rewardCard = self.GetRewards() #type: Card
         if isinstance(rewardCard, Country):
@@ -2259,48 +2302,6 @@ class Dagger(pygame.sprite.Sprite):
         GAME.screen.blit(self.image, self.rect.topleft)
 
 #################################################################################################################
-
-class CircularActionQueue: #Simple circular queue used in Battle class as an action queue
-    def __init__(self):
-        self._actions = [] #type: list[tuple] #Actions stored as tuple
-        self._start = 0
-        self._end = 1
-        self._length = 12 #2 countries either side and max 3 actions per country, means 6 + 6 = 12 maximum actions per turn
-
-        for i in range(self._length):
-            self._actions.append(None)
-    
-    def __len__(self) -> int: #Method called when instance used as an argument for len() function
-        counter = 0
-        for i in self._items:
-           if i is not None:
-               counter += 1
-        return counter
-
-    def Pop(self): #Remove action from queue. Called by Get function
-        self._actions[self._start] = None
-        if self._start == self._length:
-            self._start = 0
-        else:
-            self._start += 1
-
-    def Add(self, action: tuple): #Adds a single item to the queue
-        self._actions.append(action)
-    
-    def Get(self) -> tuple: #Returns the first item in the queue and calls Pop to remove it
-        action = self._actions[self._start]
-        self.Pop()
-        return action
-    
-    def Check(self, action: tuple):
-        for queueaction in self._actions:
-            if queueaction is None:
-                break
-            if (action[0], action[1]) == (queueaction[0], queueaction[1]):
-                return False
-        return True
-
-###################################################################################################################################
 
 class AttackTracker:
 
