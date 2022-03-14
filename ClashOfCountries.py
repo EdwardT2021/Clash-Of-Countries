@@ -10,8 +10,6 @@ from math import log10, sin, cos, pow
 import json
 from hashlib import sha256
 import threading
-import matplotlib.pyplot as plot
-import numpy as np
 import rsa
 
 # Below are the colour values used
@@ -24,7 +22,6 @@ WHITE = "#ffffff"
 # This is the multiplier for how the velocity of the card should decrease every time the card is updated.
 # This results in an exponential graph of the order y = 1/x
 GRAVITY = 0.95
-
 # The below function is necessary to allow your one file executable program to find the location of its assets.
 # It uses _MEIPASS which is a temporary folder for pyinstaller to create to store assets in upon loading the executable.
 # This function checks for the temporary folder, and if it cannot be found, sets the base path to the path of the executable.
