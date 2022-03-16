@@ -492,7 +492,7 @@ class Battle:
                 try:
                     print("reachedp1")
                     p1changes = SERVER.receive(self.p1socket)[1]
-                    SERVER.send("SUCCESS", self.p1socket)
+                    SERVER.send("SUCCESS", self.p1socket, self.player1.key)
                     print("sent success to p1")
                     p1received = True
                     print(p1changes)
@@ -503,7 +503,7 @@ class Battle:
                 try:
                     print("reachedp2")
                     p2changes = SERVER.receive(self.p2socket)[1]
-                    SERVER.send("SUCCESS", self.p2socket)
+                    SERVER.send("SUCCESS", self.p2socket, self.player2.key)
                     print("sent success to p2")
                     p2received = True
                     print(p2changes)
@@ -513,8 +513,8 @@ class Battle:
             if not (p1received and p2received):
                 continue
             
-            SERVER.send("CHANGES", self.p1socket, p2changes)
-            SERVER.send("CHANGES", self.p2socket, p1changes)
+            SERVER.send("CHANGES", self.p1socket, self.player1.key, p2changes)
+            SERVER.send("CHANGES", self.p2socket, self.player2.key, p1changes)
 
             if self.player1first:
                 p1 = self.player1
@@ -656,7 +656,7 @@ class Server: #Class containing server methods and attributes
 
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #Socket specifying using the tcp/ip protocol
         self.__socket.settimeout(1)
-        self.__host = "localhost" #socket.gethostbyname(socket.gethostname()) #Server ip address
+        self.__host = socket.gethostbyname(socket.gethostname()) #Server ip address
         self.__port = 11034 #Server port
         self.__pubkey, self.__privkey = rsa.newkeys(1024)
         self.__CountryNames = [] #type: list[str]
@@ -1091,8 +1091,8 @@ class Server: #Class containing server methods and attributes
                 opponent = self.__binarySearchMatchmake(pool, value, 0, len(pool)-1)
                 pool.remove(opponent)
             print(player, opponent, "are battling!")
-            self.send("MATCHMADE", player.socket)
-            self.send("MATCHMADE", opponent.socket)
+            self.send("MATCHMADE", player.socket, player.key)
+            self.send("MATCHMADE", opponent.socket, opponent.key)
             battle = Battle(player, opponent) 
             battleThread = Thread(battle.Run)
             self.__battleThreads.append(battleThread)
