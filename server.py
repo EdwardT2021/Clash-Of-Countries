@@ -8,7 +8,7 @@ import json
 import rsa
 from hashlib import sha256
 
-AUTH = str(sha256("121212".encode("ascii")).digest())
+AUTH = str(sha256("121212".encode("ascii"), usedforsecurity=True).digest())
 
 #The following hash is not cryptographically secure, and should only be used to compare objects
 def Hash(string: str) -> int:

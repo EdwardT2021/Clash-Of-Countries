@@ -19,7 +19,7 @@ ROYALBLUE = "#aacfdd"
 BLACK = "#000000"
 WHITE = "#ffffff"
 
-AUTH = str(sha256("121212".encode("ascii")).digest())
+AUTH = str(sha256("121212".encode("ascii"), usedforsecurity=True).digest())
 
 # This is the multiplier for how the velocity of the card should decrease every time the card is updated.
 # This results in an exponential graph of the order y = 1/x
@@ -998,10 +998,11 @@ class Connection:
 
     def __init__(self):
         t = Thread(target=LoadScreen, args=["Connecting to server!"])
-        self.HOST = "172.16.6.147"
+        self.HOST = "192.168.56.1"
         self.PORT = 11034
         self.SOCK = s.socket(s.AF_INET, s.SOCK_STREAM)
         self.regularSock = self.SOCK
+        self.regularSock.settimeout(1)
         self.battleSock = s.socket(s.AF_INET, s.SOCK_STREAM)
         self.battleSock.settimeout(1)
         self.battleEnemySock = s.socket(s.AF_INET, s.SOCK_STREAM)
@@ -1057,14 +1058,22 @@ class Connection:
 
     def Login(self) -> bool:
         t = Thread(target=LoadScreen, args=["Logging In..."])
-        if self.Receive()["Command"] == "LOGIN":
-            if GAME.New:
-                command = "SIGNUP"
-            else:
-                command = "LOGIN"
-            self.Send(command, GAME.PLAYER.username, GAME.PLAYER.password)
-            print("message sent")
+        data = CONN.Receive()
+        while data["Command"] != "LOGIN":
+            for event in pygame.event.get():
+                pass
+            data = CONN.Receive()
+        if GAME.New:
+            command = "SIGNUP"
+        else:
+            command = "LOGIN"
+        self.Send(command, GAME.PLAYER.username, GAME.PLAYER.password)
+        print("message sent")
         command = self.Receive()["Command"]
+        while command == None:
+            for event in pygame.event.get():
+                pass
+            command = self.Receive()["Command"]
         t.quit()
         t.join()
         if command == "LOGGEDIN":
@@ -1187,7 +1196,7 @@ class Game:
         self.boldFont = pygame.font.Font(resource_path("fonts\\rexlia.otf"), 24)
         self.regularFont = pygame.font.Font(resource_path("fonts\\rexlia.otf"), 14)
         self.tinyBoldFont = pygame.font.Font(resource_path("fonts\\rexlia.otf"), 11)
-        self.smallBoldFont = pygame.font.Font(resource_path("fonts\\rexlia.otf"), 19)
+        self.smallBoldFont = pygame.font.Font(resource_path("fonts\\rexlia.otf"), 16)
         self.bigBoldFont = pygame.font.Font(resource_path("fonts\\rexlia.otf"), 40)
         self.clock = pygame.time.Clock()
         self.PLAYER = Player(username="PLACEHOLDER", elo="1000")
@@ -1386,7 +1395,7 @@ class MessageQueue():
 
 class Button:
     "Class for a simple button"
-    def __init__(self, Text: str, textColour: str, boxColour: str, highlightColour: str, font: pygame.font.Font, left: float, top: float, width: float, height: float, hintText=""):
+    def __init__(self, Text: str, textColour: str, boxColour: str, highlightColour: str, font: pygame.font.Font, left: float, top: float, width: float, height: float, hintText="", highlighttext=[]):
         self.string = str(Text)
         self.left = float(left)
         self.top = float(top)
@@ -1404,19 +1413,33 @@ class Button:
         self.border = pygame.Rect(self.left-2, self.top-2, self.width+4, self.height+4)
         self.hintText = GAME.smallBoldFont.render(hintText, True, WHITE)
         self.hintBox = self.hintText.get_rect(center=(self.textCentre, self.textHeight-25))
-
+        if highlighttext != []:
+            self.highlightBox = pygame.Rect(left, top - 82, width, 80)
+            self.hboxborder = pygame.Rect(left-2, top-84, width + 4, 84)
+            self.highlighttext = []
+            for text in highlighttext:
+                self.highlighttext.append(GAME.tinyBoldFont.render(text, True, WHITE))
+        else:
+            self.highlighttext = False
     def Draw(self):
         "Draw button and a black border around it to the screen"
         pygame.draw.rect(GAME.screen, BLACK, self.border)
         pygame.draw.rect(GAME.screen, self.boxColour, self.rect)
         GAME.screen.blit(self.Text, self.TextBox)
         GAME.screen.blit(self.hintText, self.hintBox)
-    
+        
     def Highlight(self):
         "Draw highlighted button"
         pygame.draw.rect(GAME.screen, self.highlightColour, self.rect)
         GAME.screen.blit(self.Text, self.TextBox)
         GAME.screen.blit(self.hintText, self.hintBox)
+        if self.highlighttext is not False:
+            pygame.draw.rect(GAME.screen, BLACK, self.hboxborder)
+            pygame.draw.rect(GAME.screen, self.boxColour, self.highlightBox)
+            y = self.highlightBox.y + 10
+            for text in self.highlighttext:
+                GAME.screen.blit(text, (self.highlightBox.x+3, y))
+                y += 12
     
     def UpdateString(self, string: str):
         self.string = string
@@ -1506,7 +1529,6 @@ class Battle:
             card.Reset()
         for card in self.playerBuffs:
             card.Reset()
-        return
     
     def setPlayerPositions(self):
         "Set player positions with respect to the screen size"
@@ -1852,14 +1874,14 @@ class StageManager:
     def RenderProductionOptions(self):
         if self._Renderables["Production"] is not None:
             pp = str(self._CardSelected.prodpower)
-            productiontext = TextBox("Production Power: " + pp, BLACK, 5, self._ActionBox.rect.y-32, 30, 300, GAME.smallBoldFont, border=True)
+            productiontext = Text("Production Power: " + pp, 5, 70)
             return self._Renderables["Production"] + [productiontext]
-        infantry = Button("Infantry", BLACK, BLUE, ROYALBLUE, GAME.smallBoldFont, 5, 625, 170, 75, hintText="Cost: 75pp")
-        tanks = Button("Tank", BLACK, BLUE, ROYALBLUE, GAME.smallBoldFont, 185, 625, 170, 75, hintText="Cost: 150pp")
-        planes = Button("Plane", BLACK, BLUE, ROYALBLUE, GAME.smallBoldFont, 365, 625, 170, 75, hintText="Cost: 150pp")
-        sdefense = Button("Defense Artillery", BLACK, BLUE, ROYALBLUE, GAME.smallBoldFont, 545, 625, 170, 75, hintText="Cost: 125pp")
-        sattack = Button("Attack Artillery", BLACK, BLUE, ROYALBLUE, GAME.smallBoldFont, 725, 625, 170, 75, hintText="Cost: 125pp")
-        forts = Button("Fortification", BLACK, BLUE, ROYALBLUE, GAME.smallBoldFont, 905, 625, 170, 75, hintText="Cost: 350pp")
+        infantry = Button("Infantry", BLACK, BLUE, ROYALBLUE, GAME.smallBoldFont, 5, 625, 170, 75, hintText="Cost: 75pp", highlighttext=["Attack: 4", "Defense: 12", "Siege Attack: 0", "Siege Defense: 2"])
+        tanks = Button("Tank", BLACK, BLUE, ROYALBLUE, GAME.smallBoldFont, 185, 625, 170, 75, hintText="Cost: 150pp", highlighttext=["Attack: 25", "Defense: 15", "Siege Attack: 5", "Siege Defense: 0"])
+        planes = Button("Plane", BLACK, BLUE, ROYALBLUE, GAME.smallBoldFont, 365, 625, 170, 75, hintText="Cost: 150pp", highlighttext=["Attack: 30", "Defense: 10", "Siege Attack: 0", "Siege Defense: 0"])
+        sdefense = Button("Defense Artillery", BLACK, BLUE, ROYALBLUE, GAME.smallBoldFont, 545, 625, 170, 75, hintText="Cost: 125pp", highlighttext=["Attack: 5", "Defense: 5", "Siege Attack: 20", "Siege Defense: 0"])
+        sattack = Button("Attack Artillery", BLACK, BLUE, ROYALBLUE, GAME.smallBoldFont, 725, 625, 170, 75, hintText="Cost: 125pp", highlighttext=["Attack: 5", "Defense: 5", "Siege Attack: 0", "Siege Defense: 20"])
+        forts = Button("Fortification", BLACK, BLUE, ROYALBLUE, GAME.smallBoldFont, 905, 625, 170, 75, hintText="Cost: 350pp", highlighttext=["+1 Fort"])
         pp = str(self._CardSelected.prodpower)
         productiontext = TextBox("Production Power: " + pp, BLACK, 5, self._ActionBox.rect.y-32, 30, 300, GAME.smallBoldFont, border=True)
         tempList = [infantry, tanks, planes, sdefense, sattack, forts]
@@ -2087,7 +2109,7 @@ class StageManager:
                 self.Reset()
             return []
         rect = pygame.rect.Rect(GAME.SCREENWIDTH//2 - 130, GAME.SCREENHEIGHT//2 - 20, 260, 40)
-        deniedMessage = GameMessage("Action not available!", GAME.boldFont, WHITE, rect, 120)
+        deniedMessage = GameMessage("Action not available!", GAME.smallBoldFont, WHITE, rect, 120)
         self._Battle.messageQueue.Add(deniedMessage)
         self._ActionDeniedTimer = 120
         self._Stage = "ActionDenied"
@@ -2855,9 +2877,7 @@ def Play():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 t.quit()
-        if not t.is_alive():
-            CONN.Send("UNMATCHMAKE")
-            return
+                CONN.Send("UNMATCHMAKE")
         data = CONN.Receive()
     CONN.SetBattleMode()
     t.quit()
@@ -2914,8 +2934,23 @@ class LoadObject:
         self.rect.y = self.centre[1]+opp
         pygame.draw.rect(GAME.screen, ROYALBLUE, self.rect)
 
-def LoadScreen(text: str, thread: Thread):    
-    text = GAME.boldFont.render(text, True, WHITE)
+class Text:
+    def __init__(self, text: str, x: int, y: int):
+        self.text = GAME.smallBoldFont.render(text, True, BLACK)
+        self.x = x
+        self.y = y
+        self.rect = self.text.get_rect()
+        self.rect.x = x
+        self.rect.y = y
+
+    def Draw(self):
+        GAME.screen.blit(self.text, (self.x, self.y))
+
+def LoadScreen(string: str, thread: Thread):    
+    text = GAME.boldFont.render(string, True, WHITE)
+    rect = text.get_rect()
+    x = (GAME.SCREENWIDTH//2) - (rect.width//2)
+    y = (GAME.SCREENHEIGHT//2) - (rect.height//2)
     los = [LoadObject((GAME.SCREENWIDTH/2, GAME.SCREENHEIGHT/2))]
     counter = 0
     while thread.running:
@@ -2925,7 +2960,7 @@ def LoadScreen(text: str, thread: Thread):
             los.append(LoadObject((GAME.SCREENWIDTH/2, GAME.SCREENHEIGHT/2)))
         for lo in los:    
             lo.Draw()
-        GAME.screen.blit(text, (GAME.SCREENWIDTH/2-75, GAME.SCREENHEIGHT/2-15))
+        GAME.screen.blit(text, (x, y))
         GAME.Update()
 
 def Main():
