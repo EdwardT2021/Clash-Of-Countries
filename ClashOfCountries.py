@@ -2969,7 +2969,6 @@ def LoadScreen(string: str, thread: Thread):
             lo.Draw()
         GAME.screen.blit(text, (x, y))
         GAME.Update()
-    sys.exit()
 
 def Main():
     global GAME 
