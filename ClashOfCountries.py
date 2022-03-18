@@ -2907,7 +2907,18 @@ def Play():
             CONN.Send("UNMATCHMAKE")
             return
         data = CONN.Receive()
-    battle = data["Args"][0]
+    battle1 = data["Args"][0]
+    data2 = CONN.Receive()
+    while data2["Command"] != "BATTLE":
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                t.quit()
+        if not t.is_alive():
+            CONN.Send("UNMATCHMAKE")
+            return
+        data = CONN.Receive()
+    battle2 = data["Args"][0]
+    battle = battle1 + battle2
     enemyCountries = battle["EnemyCountries"]
     enemyBuffs = battle["EnemyBuffs"]
     enemyCountryObjects = []
