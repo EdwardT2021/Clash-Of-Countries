@@ -472,22 +472,26 @@ class Battle:
                 p2connected = True
                 print(f"{player2} connected")
         
-        player1d1 = {"EnemyCountries": [], "EnemyBuffs": []} 
-        player1d2 = {"Enemy": [player1.username, player1.wins, player1.losses, player1.elo, self.player1.socket.getpeername()[0]], "First": not self.player1first}
+        player1d1 = {"EnemyCountries": []} 
+        player1d2 = {"EnemyBuffs": []} 
+        player1d3 = {"Enemy": [player1.username, player1.wins, player1.losses, player1.elo, self.player1.socket.getpeername()[0]], "First": not self.player1first}
         for c in player1.prioritycountries:
             player1d1["EnemyCountries"].append(c.ToList())
         for b in player1.prioritybuffs:
-            player1d1["EnemyBuffs"].append(str(b))
+            player1d2["EnemyBuffs"].append(str(b))
         SERVER.send("BATTLE", self.p2socket, self.player2.key, player1d1)
         SERVER.send("BATTLE", self.p2socket, self.player2.key, player1d2)
-        player2d1 = {"EnemyCountries": [], "EnemyBuffs": []} 
-        player2d2 = {"Enemy": [player2.username, player2.wins, player2.losses, player2.elo, self.player2.socket.getpeername()[0]], "First": self.player1first}
+        SERVER.send("BATTLE", self.p2socket, self.player2.key, player1d3)
+        player2d1 = {"EnemyCountries": []} 
+        player2d2 = {"EnemyBuffs": []} 
+        player2d3 = {"Enemy": [player2.username, player2.wins, player2.losses, player2.elo, self.player2.socket.getpeername()[0]], "First": self.player1first}
         for c in player2.prioritycountries:
             player2d1["EnemyCountries"].append(c.ToList())
         for b in player2.prioritybuffs:
              player2d1["EnemyBuffs"].append(str(b))
         SERVER.send("BATTLE", self.p1socket, self.player1.key, player2d1)
         SERVER.send("BATTLE", self.p1socket, self.player1.key, player2d2)
+        SERVER.send("BATTLE", self.p1socket, self.player1.key, player2d3)
         print(f"Battle between {player1.username} and {player2.username} initialised!")
                 
     def Run(self):

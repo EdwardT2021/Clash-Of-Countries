@@ -2912,12 +2912,16 @@ def Play():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 t.quit()
-        if not t.is_alive():
-            CONN.Send("UNMATCHMAKE")
-            return
         data = CONN.Receive()
     battle2 = data["Args"][0]
-    battle = battle1 + battle2
+    data3 = CONN.Receive()
+    while data3["Command"] != "BATTLE":
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                t.quit()
+        data3 = CONN.Receive()
+    battle3 = data["Args"][0]
+    battle = battle1 + battle2 + battle3
     enemyCountries = battle["EnemyCountries"]
     enemyBuffs = battle["EnemyBuffs"]
     enemyCountryObjects = []
