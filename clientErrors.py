@@ -12,6 +12,13 @@ class InitialConnectionError(ConnectionError):
         message = "Servers are offline/unreachable!"
         super(InitialConnectionError, self).__init__(message)
 
+class UnauthorisedMessageError(ConnectionError):
+
+    def __init__(self):
+
+        message = "Authorization checks failed!"
+        super(UnauthorisedMessageError, self).__init__(message)
+        
 class GraphicsError(Exception):
 
     def __init__(self, message: str):

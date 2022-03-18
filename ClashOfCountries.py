@@ -6,7 +6,7 @@ from os import path
 import sys
 import pickle
 from time import time
-from math import log10, sin, cos, pow
+from math import log10, sin, cos
 import json
 from hashlib import sha256
 import threading
@@ -18,6 +18,8 @@ BLUE = "#356288"
 ROYALBLUE = "#aacfdd"
 BLACK = "#000000"
 WHITE = "#ffffff"
+
+AUTH = str(sha256("121212".encode("ascii")).digest())
 
 # This is the multiplier for how the velocity of the card should decrease every time the card is updated.
 # This results in an exponential graph of the order y = 1/x
@@ -996,13 +998,15 @@ class Connection:
 
     def __init__(self):
         t = Thread(target=LoadScreen, args=["Connecting to server!"])
-        self.HOST = "192.168.1.248"
+        self.HOST = "172.16.6.147"
         self.PORT = 11034
         self.SOCK = s.socket(s.AF_INET, s.SOCK_STREAM)
         self.regularSock = self.SOCK
         self.battleSock = s.socket(s.AF_INET, s.SOCK_STREAM)
-        self.__PUBLICKEY, self.__PRIVATEKEY = rsa.newkeys(1024)
-        self.SOCK.settimeout(1)
+        self.battleSock.settimeout(1)
+        self.battleEnemySock = s.socket(s.AF_INET, s.SOCK_STREAM)
+        self.battleEnemySock.settimeout(1)
+        self.__PUBLICKEY, self.__PRIVATEKEY = rsa.newkeys(2048)
         failed = True
         errorcount = 0
         while failed:
@@ -1035,11 +1039,18 @@ class Connection:
         asString = data.decode("utf-8")
         dictionary = json.loads(asString)
         print(f"{dictionary} received")
+        if dictionary["AUTH"] != AUTH:
+            raise e.UnauthorisedMessageError
         return dictionary
 
 
-    def Send(self, message: str):
-        "Takes a JSON formatted string and sends it to the server"
+    def Send(self, command: str, *args):
+        "Takes a command and arguments and encodes and sends to server"
+        d = {"AUTH": AUTH, "Command": None, "Args": None}
+        d["Command"] = command
+        if args:
+            d["Args"] = args
+        message = json.dumps(d)
         self.SOCK.send(rsa.encrypt(message.encode("utf-8"), self.__SERVERKEY))
         print(message, "sent to", self.SOCK.getpeername())
     
@@ -1048,10 +1059,10 @@ class Connection:
         t = Thread(target=LoadScreen, args=["Logging In..."])
         if self.Receive()["Command"] == "LOGIN":
             if GAME.New:
-                message = json.dumps({"Command": "SIGNUP", "Args": (GAME.PLAYER.username, GAME.PLAYER.password)})
+                command = "SIGNUP"
             else:
-                message = json.dumps({"Command": "LOGIN", "Args": (GAME.PLAYER.username, GAME.PLAYER.password)})
-            self.Send(message)
+                command = "LOGIN"
+            self.Send(command, GAME.PLAYER.username, GAME.PLAYER.password)
             print("message sent")
         command = self.Receive()["Command"]
         t.quit()
@@ -1062,20 +1073,15 @@ class Connection:
             return False
     
     def AddCountry(self, c: Country):
-        d = {"Command": "ADDCOUNTRY", "Args": [c.name, c.towns, c.type, c.production]}
-        j = json.dumps(d)
-        self.Send(j)
+        self.Send("ADDCOUNTRY", c.name, c.towns, c.type, c.production)
     
     def AddBuff(self, b: Buff):
         a = [type(b).__name__[:-4]]
-        d = {"Command": "ADDBUFF", "Args": a}
-        j = json.dumps(d)
-        self.Send(j)
+        self.Send("ADDBUFF", a)
     
     def SetBattleMode(self):
         self.PORT = 11035
         self.SOCK = self.battleSock
-        self.SOCK.settimeout(1)
         connected = False
         while not connected:
             try:
@@ -1085,14 +1091,38 @@ class Connection:
                 continue
     
     def SetNormalMode(self):
+        try:
+            self.battleSock.close()
+        except:
+            pass
+        
         self.PORT = 11034
         self.SOCK = self.regularSock
-        
+    
+    def SetBattlePlayerMode(self, enemyIP: str):
+        t = Thread(LoadScreen, ["Connecting to opponent..."])
+        connected = False
+        while not connected:
+            try:
+                self.battleEnemySock.connect((enemyIP, self.PORT))
+                connected = True
+            except:
+                pass
+            for event in pygame.event.get():
+                pass
+        self.SOCK = self.battleEnemySock
+        t.quit()
+        t.join()
+    
+    def SetBattleSock(self):
+        self.battleEnemySock.close()
+        self.SOCK = self.battleSock
+
 ##################################################################################
 
 class Player:
 
-    def __init__(self, username="", password=0, countries=[], buffs=[], wins=0, losses=0, elo=0, pastElos=[]):
+    def __init__(self, username="", password=0, countries=[], buffs=[], wins=0, losses=0, elo=0, ip=""):
         "Player object containing relevant player data"
         self.username = username #type: str
         self.password = password #type: str
@@ -1101,10 +1131,7 @@ class Player:
         self.wins = wins #type: int
         self.losses = losses #type: int
         self.elo = elo #type: int
-        if pastElos == []:
-            for i in range(12):
-                pastElos.append(self.elo)
-        self.pastElos = pastElos
+        self.ip = ip
         self.prioritycountries = [] #type: list[Country]
         self.prioritybuffs = [] #type: list[Buff]
     
@@ -1128,15 +1155,13 @@ class Player:
             return
         priority.append(card)
         card.priority = True
-        CONN.Send(json.dumps({"Command": "PRIORITYCOUNTRY", "Args": [hash(card)]}))
+        CONN.Send("PRIORITYCOUNTRY", hash(card))
         while len(priority) > 2:
             old = priority.pop(0)
             old.priority = False
-            CONN.Send(json.dumps({"Command": "DEPRIORITISECOUNTRY", "Args": [hash(old)]}))
+            CONN.Send("DEPRIORITISECOUNTRY", hash(old))
     
     def ChangeElo(self, newElo: int):
-        self.pastElos.remove(0)
-        self.pastElos.append(self.elo)
         self.elo = newElo
 
     def __getstate__(self) -> dict:
@@ -1263,9 +1288,6 @@ class Game:
     
     def getevent(self) -> list:
         return pygame.event.get()
-    
-    def DrawEloGraph(self):
-        pass
         
 #####################################################################################
 
@@ -1421,7 +1443,7 @@ class Battle:
         self.setPlayerPositions() #type: list[tuple[int, int]]
         self.setEnemyPositions() #type: list[tuple[int, int]]
         self.messageQueue = MessageQueue(50)
-        self.GameBar = GameBar(player, enemy)
+        self.GameBar = GameBar(player, enemy, playerFirst)
         self.NextTurnButton = Button("Confirm Actions", BLACK, BLUE, ROYALBLUE, GAME.tinyBoldFont, 900, 55, 150, 30)
         self.AttackTracker = AttackTracker()
         self.StageManager = StageManager(enemyCountries, enemyBuffs, playerCountries, playerBuffs, self)
@@ -1432,6 +1454,8 @@ class Battle:
         GAME.MusicPlayer.unload()
         GAME.MusicPlayer.load(resource_path("music\\Battle.ogg"))
         self.PlayerActions = [[[hash(self.countries[0]), None], [], None], [[hash(self.countries[1]), None], [], None]]
+        if not isinstance(self, TutorialBattle):
+            CONN.SetBattlePlayerMode(enemy.ip)
     
     def Run(self):
         "Begin the battle game loop"
@@ -1507,16 +1531,8 @@ class Battle:
         for i in range(2):
             self.PlayerActions[i][2] = hash(self.playerCountries[i].Buff)
             self.PlayerActions[i][1] = self.playerCountries[i].UnitsBought
-        actions = json.dumps({"Command": "CHANGES", "Args": self.PlayerActions})
-        CONN.Send(actions)
+        CONN.Send("CHANGES", self.PlayerActions)
         self.PlayerActions = [[[hash(self.countries[0]), None], {}, None], [[hash(self.countries[1]), None], {}, None]]
-        t = Thread(target=LoadScreen, args=["Waiting for confirmation..."])   
-        while CONN.Receive()["Command"] != "SUCCESS":
-            for event in pygame.event.get():
-                pass
-            continue
-        t.quit()
-        t.join()
         t = Thread(target=LoadScreen, args=["Waiting for enemy..."])
         data = CONN.Receive()
         while data["Command"] != "CHANGES":
@@ -1527,8 +1543,17 @@ class Battle:
         t.join()
         return data["Args"][0]
 
-    def PlayerWins(self):
+    def BattleFinished(self, win: bool):
         t = Thread(target=LoadScreen, args=["Getting rewards..."])
+        if not isinstance(self, TutorialBattle):
+            CONN.SetBattleSock()
+        if win:
+            msg = "WIN"
+            screen = self.victoryScreen
+        else:
+            msg = "LOSS"
+            screen = self.defeatScreen
+        CONN.Send(msg)
         timeTaken = self.GameBar.GetBattleTime()
         timeTaken = GAME.smallBoldFont.render(timeTaken, True, WHITE)
         enemyString = self.GameBar.enemy.username
@@ -1538,6 +1563,8 @@ class Battle:
         else:
             data = CONN.Receive()
             while data["Command"] != "ELO":
+                for event in pygame.event.get():
+                    pass
                 data = CONN.Receive()
                 continue
             elo = data["Args"][0]
@@ -1558,58 +1585,12 @@ class Battle:
         t.join()
         while timer <= 500:
             timer += 1
-            GAME.screen.blit(self.victoryScreen, (0, 0))
+            GAME.screen.blit(screen, (0, 0))
             GAME.screen.blit(timeTaken, (440, 205))
             GAME.screen.blit(enemyString, (440, 263))
             GAME.screen.blit(eloGain, (440, 325))
             rewardCard.Update()
             rewardCard.Draw()
-            for event in GAME.getevent():                       #Gets user input events, iterates through them
-                if event.type == pygame.QUIT:                      #If cross in corner pressed, stop running this game loop
-                    break
-            GAME.Update()
-        self.run = False
-    
-    def EnemyWins(self):
-        timeTaken = self.GameBar.GetBattleTime()
-        timeTaken = GAME.smallBoldFont.render(timeTaken, True, WHITE)
-        enemyString = self.GameBar.enemy.username
-        enemyString = GAME.smallBoldFont.render(enemyString, True, WHITE)
-        if isinstance(self, TutorialBattle):
-            eloGain = "0"
-        else:
-            data = CONN.Receive()
-            while data["Command"] != "ELO":
-                data = CONN.Receive()
-                continue
-            elo = data["Args"]
-            eloGain = elo - GAME.PLAYER.elo
-            GAME.PLAYER.ChangeElo(elo)
-            elo = str(elo)
-        rewardCard = self.GetRewards() #type: Card
-        if isinstance(rewardCard, Country):
-            CONN.AddCountry(rewardCard)
-        elif isinstance(rewardCard, Buff):
-            CONN.AddBuff(rewardCard)
-        eloGain = GAME.smallBoldFont.render(eloGain, True, WHITE)
-        if rewardCard is not None:
-            rewardCard.rect.topleft = (660, 250)
-            rewardCard.Flip()
-            rewardCard.SetDetails()
-        else:
-            reward = GAME.boldFont.render("No Reward :(", True, WHITE)
-        timer = 0
-        while timer <= 500:
-            timer += 1
-            GAME.screen.blit(self.defeatScreen, (0, 0))
-            GAME.screen.blit(timeTaken, (440, 205))
-            GAME.screen.blit(enemyString, (440, 263))
-            GAME.screen.blit(eloGain, (440, 325))
-            if rewardCard is not None:
-                rewardCard.Update()
-                rewardCard.Draw()
-            else:
-                GAME.screen.blit(reward, (660, 250))
             for event in GAME.getevent():                       #Gets user input events, iterates through them
                 if event.type == pygame.QUIT:                      #If cross in corner pressed, stop running this game loop
                     break
@@ -1714,7 +1695,7 @@ class StageManager:
             if card.dead:
                 dead += 1
         if dead == len(self._EnemyCountries):
-            self._Battle.PlayerWins()
+            self._Battle.BattleFinished(True)
             return []
         dead = 0
         for card in self._PlayerCountries:
@@ -1723,7 +1704,7 @@ class StageManager:
             if card.dead:
                 dead += 1
         if dead == len(self._PlayerCountries):
-            self._Battle.EnemyWins()
+            self._Battle.BattleFinished(False)
             return []
         if self._Stage == "Move":
             renderables += self.RenderMoveStage()
@@ -2183,7 +2164,7 @@ class TextBox:
 
 class GameBar:
 
-    def __init__(self, player: Player, enemy: Player):
+    def __init__(self, player: Player, enemy: Player, playerfirst: bool):
         self.startTime = time()
         self.time = 0
         image = pygame.image.load(resource_path("art\\GameBar.png")).convert_alpha()
@@ -2194,6 +2175,12 @@ class GameBar:
         self.enemy = enemy
         playertext = player.Text()
         enemytext = enemy.Text()
+        if playerfirst:
+            playertext = "1. " + playertext
+            enemytext = "2. " + enemytext
+        else:
+            playertext = "2. " + playertext
+            enemytext = "1. " + enemytext
         self.playertext = GAME.boldFont.render(playertext, True, ROYALBLUE)
         self.enemytext = GAME.boldFont.render(enemytext, True, ROYALBLUE)
         self.flippedImage.blit(self.playertext, (15, 8))
@@ -2575,7 +2562,7 @@ def MainMenu():
                     if button.string == "Exit": #If exit button pressed, Save the game data and stop the game
                         run = False
                         GAME.Save()
-                        CONN.Send(json.dumps({"Command": "END", "Args": None}))
+                        CONN.Send("END")
                     elif button.string == "Tutorial": #Launches Tutorial
                         Tutorial()
                         GAME.MusicPlayer.unload()
@@ -2594,7 +2581,7 @@ def MainMenu():
             if event.type == pygame.QUIT:
                 run = False
                 GAME.Save()
-                CONN.Send(json.dumps({"Command": "END", "Args": None}))
+                CONN.Send("END")
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
                     click = True
@@ -2861,8 +2848,7 @@ def GetPlayerInfo():
     GetPlayerInfo()
 
 def Play():
-    msg = {"Command": "MATCHMAKE", "Args": None}
-    CONN.Send(json.dumps(msg))
+    CONN.Send("MATCHMAKE")
     t = Thread(target=LoadScreen, args=["Matchmaking..."])
     data = CONN.Receive()
     while data["Command"] != "MATCHMADE":
@@ -2870,8 +2856,7 @@ def Play():
             if event.type == pygame.QUIT:
                 t.quit()
         if not t.is_alive():
-            msg = json.dumps({"Command": "UNMATCHMAKE", "Args": None})
-            CONN.Send(msg)
+            CONN.Send("UNMATCHMAKE")
             return
         data = CONN.Receive()
     CONN.SetBattleMode()
@@ -2884,8 +2869,7 @@ def Play():
             if event.type == pygame.QUIT:
                 t.quit()
         if not t.is_alive():
-            msg = json.dumps({"Command": "UNMATCHMAKE", "Args": None})
-            CONN.Send(msg)
+            CONN.Send("UNMATCHMAKE")
             return
         data = CONN.Receive()
     battle = data["Args"][0]

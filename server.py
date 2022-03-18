@@ -6,6 +6,9 @@ import random
 import ServerErrors as e
 import json 
 import rsa
+from hashlib import sha256
+
+AUTH = str(sha256("121212".encode("ascii")).digest())
 
 #The following hash is not cryptographically secure, and should only be used to compare objects
 def Hash(string: str) -> int:
@@ -468,18 +471,18 @@ class Battle:
                 self.p2socket = player
                 p2connected = True
                 print(f"{player2} connected")
-        player1d = {"EnemyCountries": [], "EnemyBuffs": [], "Enemy": [player1.username, player1.wins, player1.losses, player1.elo], "First": not self.player1first}
+        player1d = {"EnemyCountries": [], "EnemyBuffs": [], "Enemy": [player1.username, player1.wins, player1.losses, player1.elo, self.player1.socket.getpeername()[0]], "First": not self.player1first}
         for c in player1.prioritycountries:
             player1d["EnemyCountries"].append(c.ToList())
         for b in player1.prioritybuffs:
             player1d["EnemyBuffs"].append(str(b))
-        SERVER.send("BATTLE", self.p2socket, player1d)
-        player2d = {"EnemyCountries": [], "EnemyBuffs": [], "Enemy": [player2.username, player2.wins, player2.losses, player2.elo], "First": self.player1first}
+        SERVER.send("BATTLE", self.p2socket, self.player2.key, player1d)
+        player2d = {"EnemyCountries": [], "EnemyBuffs": [], "Enemy": [player2.username, player2.wins, player2.losses, player2.elo, self.player2.socket.getpeername()[0]], "First": self.player1first}
         for c in player2.prioritycountries:
             player2d["EnemyCountries"].append(c.ToList())
         for b in player2.prioritybuffs:
              player2d["EnemyBuffs"].append(str(b))
-        SERVER.send("BATTLE", self.p1socket, player2d)
+        SERVER.send("BATTLE", self.p1socket, self.player1.key, player2d)
         print(f"Battle between {player1.username} and {player2.username} initialised!")
                 
     def Run(self):
@@ -491,119 +494,41 @@ class Battle:
             if not p1received:
                 try:
                     print("reachedp1")
-                    p1changes = SERVER.receive(self.p1socket)[1]
+                    p1finished = SERVER.receive(self.p1socket)[1]
                     SERVER.send("SUCCESS", self.p1socket, self.player1.key)
                     print("sent success to p1")
                     p1received = True
-                    print(p1changes)
                 except Exception as e:
                     print(e)
                     pass
             if not p2received:
                 try:
                     print("reachedp2")
-                    p2changes = SERVER.receive(self.p2socket)[1]
+                    p2finished = SERVER.receive(self.p2socket)[1]
                     SERVER.send("SUCCESS", self.p2socket, self.player2.key)
                     print("sent success to p2")
                     p2received = True
-                    print(p2changes)
                 except:
                     pass
                 
             if not (p1received and p2received):
                 continue
             
-            SERVER.send("CHANGES", self.p1socket, self.player1.key, p2changes)
-            SERVER.send("CHANGES", self.p2socket, self.player2.key, p1changes)
-
-            if self.player1first:
-                p1 = self.player1
-                p2 = self.player2
-                player1countries, player2countries = self.player1countries, self.player2countries
-                player1buffs, player2buffs = self.player1buffs, self.player2buffs
+            if p1finished == "WIN" and p2finished == "LOSE":
+                winner = self.player1
+                winsock = self.p1socket
+                loser = self.player2
+                losesock = self.p2socket
             else:
-                p1 = self.player2
-                p2 = self.player1
-                p1changes, p2changes = p2changes, p1changes
-                player1countries, player2countries = self.player2countries, self.player1countries
-                player1buffs, player2buffs = self.player2buffs, self.player1buffs
-            countries = player1countries + player2countries
-            
-            attacks = []
-            for i in range(len(player1countries)):
-                actions = p1changes[i]
-                card = player1countries[i]
-                if card.dead:
-                    continue
-                card.army.AddInfantry(actions[1]["Infantry"])
-                card.army.AddTanks(actions[1]["Tank"])
-                card.army.AddPlanes(actions[1]["Plane"])
-                card.army.AddDefenseArtillery(actions[1]["Defense Artillery"])
-                card.army.AddAttackArtillery(actions[1]["Attack Artillery"])
-                card.fortifications += actions[1]["Fortification"]
-                if actions[2] != None:
-                    for i in player1buffs:
-                        if hash(i) == actions[2]:
-                            card.AddBuff(i)
-                            break
-                if actions[0][1] is not None:
-                    attacks.append(actions[0])
-
-            for i in range(len(player2countries)):
-                actions = p2changes[i]
-                card = player2countries[i]
-                if card.dead:
-                    continue
-                card.army.AddInfantry(actions[1]["Infantry"])
-                card.army.AddTanks(actions[1]["Tank"])
-                card.army.AddPlanes(actions[1]["Plane"])
-                card.army.AddDefenseArtillery(actions[1]["Defense Artillery"])
-                card.army.AddAttackArtillery(actions[1]["Attack Artillery"])
-                card.fortifications += actions[1]["Fortification"]
-                if actions[2] != None:
-                    for i in player2buffs:
-                        if hash(i) == actions[2]:
-                            card.AddBuff(i)
-                            break
-                if actions[0][1] is not None:
-                    attacks.append(actions[0])
-            
-            for attack in attacks:
-                cl = None #type: Country
-                c2 = None #type: Country
-                for i in countries:
-                    if hash(i) == attack[0]:
-                        c1 = i
-                    elif hash(i) == attack[1]:
-                        c2 = i
-                self.CalculateBattleOutcome(c1, c2)
-                dead = 0
-                for i in player1countries:
-                    if i.dead:
-                        dead += 1
-                if dead == len(player1countries):
-                    run = False
-                    winner = self.player2
-                    loser = self.player1
-                dead = 0
-                for i in player2countries:
-                    if i.dead:
-                        dead += 1
-                if dead == len(player2countries):
-                    run = False
-                    winner = self.player1
-                    loser = self.player2
+                winner = self.player2
+                winsock = self.p2socket
+                loser = self.player1
+                losesock = self.p2socket
 
         probabilityofwinnerwin = ELOCALC.calculateProbabilityOfWin(winner.elo, loser.elo)
         probabilityofloserwin = ELOCALC.calculateProbabilityOfWin(loser.elo, winner.elo)
         winner.elo = ELOCALC.calculateNewElo(winner.elo, probabilityofwinnerwin, 1)
         loser.elo = ELOCALC.calculateNewElo(loser.elo, probabilityofloserwin, 0)
-        if winner == self.player1:
-            winsock = self.p1socket
-            losesock = self.p2socket
-        else:
-            winsock = self.p2socket
-            losesock = self.p1socket
         SERVER.send("ELO", winsock, winner.key, winner.elo)
         SERVER.send("ELO", losesock, loser.key, loser.elo)
         SERVER.getReward(winsock, winner)
@@ -658,7 +583,7 @@ class Server: #Class containing server methods and attributes
         self.__socket.settimeout(1)
         self.__host = socket.gethostbyname(socket.gethostname()) #Server ip address
         self.__port = 11034 #Server port
-        self.__pubkey, self.__privkey = rsa.newkeys(1024)
+        self.__pubkey, self.__privkey = rsa.newkeys(2048)
         self.__CountryNames = [] #type: list[str]
         with open("countries.txt", "r") as f:
             for line in f.readlines():
@@ -692,7 +617,7 @@ class Server: #Class containing server methods and attributes
         print(f"Server Live at {self.__host, self.__port}")
 
     def send(self, command: str, conn: socket.socket, key: rsa.PublicKey, *args): #Sends a message through a socket
-        message = {"Command": command} #Creates dictionary containing the command and any arguments
+        message = {"AUTH": AUTH, "Command": command} #Creates dictionary containing the command and any arguments
         if args:
             message["Args"] = args
         print("sent", message)
@@ -705,6 +630,8 @@ class Server: #Class containing server methods and attributes
         data = json.loads(new.decode("utf-8"))
         command = data["Command"]
         args = data["Args"]
+        if data["AUTH"] != AUTH:
+            return False, False
         print(f"Received {command}: {args}")
         return command, args
         
@@ -751,6 +678,9 @@ class Server: #Class containing server methods and attributes
                     try:
                         command, info = self.receive(client) 
                         received = True
+                        if command == False:
+                            print("Unauthorized connection from ", client.getpeername()[0])
+                            break
                     except:
                         pass
                 print(command, info, "received")
@@ -909,6 +839,9 @@ class Server: #Class containing server methods and attributes
             try:
                 command, info = self.receive(client)
                 print(command, info, " received in handle")
+                if command == False:
+                    print("Unauthorized connection from ", client.getpeername()[0])
+                    break
             except:
                 continue
             if command == "END":
