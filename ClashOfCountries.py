@@ -1019,7 +1019,6 @@ class Connection:
             if errorcount == 15:
                 t.quit()
                 t.join()
-
                 raise e.InitialConnectionError
         self.SOCK.send(self.__PUBLICKEY.save_pkcs1("PEM"))
         failed = True
@@ -2526,7 +2525,7 @@ def MainLoop():
     try:
         CONN = Connection()
     except:
-        sys.exit()
+        return
 
     if GAME.New:
         GetPlayerInfo()
@@ -2994,7 +2993,6 @@ def Main():
     GAME = Game()
     GAME.LoadPlayer()
     MainLoop()
-    pygame.display.quit()
 
 if __name__ == "__main__":
     Main()
