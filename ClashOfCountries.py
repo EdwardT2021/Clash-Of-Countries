@@ -1085,10 +1085,18 @@ class Connection:
             return False
     
     def AddCountry(self, c: Country):
+        for i in GAME.PLAYER.countries:
+            hashc = hash(c)
+            if hash(i) == hashc:
+                return
         self.Send("ADDCOUNTRY", c.name, c.towns, c.type, c.production)
     
     def AddBuff(self, b: Buff):
-        a = [type(b).__name__[:-4]]
+        for i in GAME.PLAYER.buffs:
+            hashb = hash(b)
+            if hash(i) == hashb:
+                return
+        a = type(b).__name__[:-4]
         self.Send("ADDBUFF", a)
     
     def SetBattleMode(self):
