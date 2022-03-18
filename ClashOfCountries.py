@@ -2921,7 +2921,7 @@ def Play():
                 t.quit()
         data3 = CONN.Receive()
     battle3 = data["Args"][0]
-    battle = battle1 + battle2 + battle3
+    battle = {"EnemyCountries": battle1["EnemyCountries"], "EnemyBuffs": battle2["EnemyBuffs"], "Enemy": battle3["Enemy"], "First": battle3["First"]}
     enemyCountries = battle["EnemyCountries"]
     enemyBuffs = battle["EnemyBuffs"]
     enemyCountryObjects = []

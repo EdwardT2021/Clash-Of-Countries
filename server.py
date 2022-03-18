@@ -488,7 +488,7 @@ class Battle:
         for c in player2.prioritycountries:
             player2d1["EnemyCountries"].append(c.ToList())
         for b in player2.prioritybuffs:
-             player2d1["EnemyBuffs"].append(str(b))
+             player2d2["EnemyBuffs"].append(str(b))
         SERVER.send("BATTLE", self.p1socket, self.player1.key, player2d1)
         SERVER.send("BATTLE", self.p1socket, self.player1.key, player2d2)
         SERVER.send("BATTLE", self.p1socket, self.player1.key, player2d3)
@@ -502,7 +502,6 @@ class Battle:
         while run:
             if not p1received:
                 try:
-                    print("reachedp1")
                     p1finished = SERVER.receive(self.p1socket)[1]
                     SERVER.send("SUCCESS", self.p1socket, self.player1.key)
                     print("sent success to p1")
@@ -512,7 +511,6 @@ class Battle:
                     pass
             if not p2received:
                 try:
-                    print("reachedp2")
                     p2finished = SERVER.receive(self.p2socket)[1]
                     SERVER.send("SUCCESS", self.p2socket, self.player2.key)
                     print("sent success to p2")
