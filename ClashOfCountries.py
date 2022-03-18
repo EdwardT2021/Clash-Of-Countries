@@ -998,7 +998,7 @@ class Connection:
 
     def __init__(self):
         t = Thread(target=LoadScreen, args=["Connecting to server!"])
-        self.HOST = "192.168.56.1"
+        self.HOST = "192.168.1.64"
         self.PORT = 11034
         self.SOCK = s.socket(s.AF_INET, s.SOCK_STREAM)
         self.regularSock = self.SOCK
@@ -1017,6 +1017,9 @@ class Connection:
             except:
                 errorcount += 1
             if errorcount == 15:
+                t.quit()
+                t.join()
+
                 raise e.InitialConnectionError
         self.SOCK.send(self.__PUBLICKEY.save_pkcs1("PEM"))
         failed = True
@@ -2512,7 +2515,11 @@ def MainLoop():
     GAME.screen.fill(BLACK)
     GAME.Update()
     global CONN
-    CONN = Connection()
+    try:
+        CONN = Connection()
+    except:
+        sys.exit()
+
     if GAME.New:
         GetPlayerInfo()
         GAME.Save()
@@ -2962,12 +2969,14 @@ def LoadScreen(string: str, thread: Thread):
             lo.Draw()
         GAME.screen.blit(text, (x, y))
         GAME.Update()
+    sys.exit()
 
 def Main():
     global GAME 
     GAME = Game()
     GAME.LoadPlayer()
     MainLoop()
+    pygame.display.quit()
 
 if __name__ == "__main__":
     Main()
