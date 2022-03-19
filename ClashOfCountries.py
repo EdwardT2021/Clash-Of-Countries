@@ -19,7 +19,7 @@ ROYALBLUE = "#aacfdd"
 BLACK = "#000000"
 WHITE = "#ffffff"
 
-AUTH = str(sha256("121212".encode("ascii"), usedforsecurity=True).digest())
+AUTH = str(sha256("121212".encode("ascii"), usedforsecurity=True).digest()).removeprefix("b'").removesuffix("'")
 
 # This is the multiplier for how the velocity of the card should decrease every time the card is updated.
 # This results in an exponential graph of the order y = 1/x
