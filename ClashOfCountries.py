@@ -1137,11 +1137,21 @@ class Connection:
         self.battleEnemySock.close()
         self.SOCK = self.battleSock
 
+    def SendToPlayer(self, command, key, *args):
+        "Takes a command and arguments and encodes and sends to opposing player"
+        d = {"AUTH": AUTH, "Command": None, "Args": None}
+        d["Command"] = command
+        if args:
+            d["Args"] = args
+        message = json.dumps(d)
+        self.SOCK.send(rsa.encrypt(message.encode("utf-8"), key))
+        print(message, "sent to", self.SOCK.getpeername())
+
 ##################################################################################
 
 class Player:
 
-    def __init__(self, username="", password=0, countries=[], buffs=[], wins=0, losses=0, elo=0, ip=""):
+    def __init__(self, username="", password=0, countries=[], buffs=[], wins=0, losses=0, elo=0, ip="", key=""):
         "Player object containing relevant player data"
         self.username = username #type: str
         self.password = password #type: str
@@ -1153,6 +1163,8 @@ class Player:
         self.ip = ip
         self.prioritycountries = [] #type: list[Country]
         self.prioritybuffs = [] #type: list[Buff]
+        if key != "":
+            self.key = rsa.PublicKey.load_pkcs1(key, "PEM")
     
     def Text(self) -> str:
         "Returns a string in the form USERNAME - Elo: ELO"
@@ -1563,7 +1575,7 @@ class Battle:
         for i in range(2):
             self.PlayerActions[i][2] = hash(self.playerCountries[i].Buff)
             self.PlayerActions[i][1] = self.playerCountries[i].UnitsBought
-        CONN.Send("CHANGES", self.PlayerActions)
+        CONN.SendToPlayer("CHANGES", self.PlayerActions, self.enemy.key)
         self.PlayerActions = [[[hash(self.countries[0]), None], {}, None], [[hash(self.countries[1]), None], {}, None]]
         t = Thread(target=LoadScreen, args=["Waiting for enemy..."])
         data = CONN.Receive()
@@ -2912,15 +2924,22 @@ def Play():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 t.quit()
-        data = CONN.Receive()
-    battle2 = data["Args"][0]
+        data2 = CONN.Receive()
+    battle2 = data2["Args"][0]
     data3 = CONN.Receive()
     while data3["Command"] != "BATTLE":
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 t.quit()
         data3 = CONN.Receive()
-    battle3 = data["Args"][0]
+    battle3 = data3["Args"][0]
+    data4 = CONN.Receive()
+    while data4["Command"] != "BATTLE":
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                t.quit()
+        data4 = CONN.Receive()
+    key = data4["Args"][0]
     battle = {"EnemyCountries": battle1["EnemyCountries"], "EnemyBuffs": battle2["EnemyBuffs"], "Enemy": battle3["Enemy"], "First": battle3["First"]}
     enemyCountries = battle["EnemyCountries"]
     enemyBuffs = battle["EnemyBuffs"]
@@ -2939,7 +2958,7 @@ def Play():
         enemyCountryObjects.append(c)
     for buff in enemyBuffs:
         enemyBuffObjects.append(eval(buff + "Buff(False)"))
-    enemy = Player(enemy[0], countries=enemyCountryObjects, buffs=enemyBuffObjects, wins=enemy[1], losses=enemy[2], elo=enemy[3])
+    enemy = Player(enemy[0], countries=enemyCountryObjects, buffs=enemyBuffObjects, wins=enemy[1], losses=enemy[2], elo=enemy[3], ip=enemy[4], key=key)
     battle = Battle(GAME.PLAYER, playerCountries, playerBuffs, enemy, enemyCountryObjects, enemyBuffObjects, battle["First"])
     t.quit()
     t.join()

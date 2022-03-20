@@ -432,7 +432,7 @@ class Player:
         self.elo = elo #type: int
         self.Battle = False
         self.socket = socket #type: socket.socket
-        self.key = key
+        self.key = key #type: rsa.PublicKey
     
     def __repr__(self) -> str:
         return self.username
@@ -482,6 +482,7 @@ class Battle:
         SERVER.send("BATTLE", self.p2socket, self.player2.key, player1d1)
         SERVER.send("BATTLE", self.p2socket, self.player2.key, player1d2)
         SERVER.send("BATTLE", self.p2socket, self.player2.key, player1d3)
+        SERVER.send("BATTLE", self.p2socket, self.player2.key, self.player1.key.save_pkcs1("PEM"))
         player2d1 = {"EnemyCountries": []} 
         player2d2 = {"EnemyBuffs": []} 
         player2d3 = {"Enemy": [player2.username, player2.wins, player2.losses, player2.elo, self.player2.socket.getpeername()[0]], "First": self.player1first}
@@ -492,6 +493,7 @@ class Battle:
         SERVER.send("BATTLE", self.p1socket, self.player1.key, player2d1)
         SERVER.send("BATTLE", self.p1socket, self.player1.key, player2d2)
         SERVER.send("BATTLE", self.p1socket, self.player1.key, player2d3)
+        SERVER.send("BATTLE", self.p1socket, self.player1.key, self.player2.key.save_pkcs1("PEM"))
         print(f"Battle between {player1.username} and {player2.username} initialised!")
                 
     def Run(self):
