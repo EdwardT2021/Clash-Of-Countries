@@ -2959,9 +2959,9 @@ def Play():
     for buff in enemyBuffs:
         enemyBuffObjects.append(eval(buff + "Buff(False)"))
     enemy = Player(enemy[0], countries=enemyCountryObjects, buffs=enemyBuffObjects, wins=enemy[1], losses=enemy[2], elo=enemy[3], ip=enemy[4], key=key)
-    battle = Battle(GAME.PLAYER, playerCountries, playerBuffs, enemy, enemyCountryObjects, enemyBuffObjects, battle["First"])
     t.quit()
     t.join()
+    battle = Battle(GAME.PLAYER, playerCountries, playerBuffs, enemy, enemyCountryObjects, enemyBuffObjects, battle["First"])
     battle.Run()
     CONN.SetNormalMode()
     GAME.Reset()
