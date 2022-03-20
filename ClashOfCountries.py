@@ -2933,13 +2933,13 @@ def Play():
                 t.quit()
         data3 = CONN.Receive()
     battle3 = data3["Args"][0]
-    data4 = CONN.Receive()
-    while data4["Command"] != "BATTLE":
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                t.quit()
-        data4 = CONN.Receive()
-    key = data4["Args"][0]
+    receivedkey = False
+    while not receivedkey:
+        try:
+            key = CONN.SOCK.recv(2048)
+            receivedkey = True
+        except:
+            pass
     battle = {"EnemyCountries": battle1["EnemyCountries"], "EnemyBuffs": battle2["EnemyBuffs"], "Enemy": battle3["Enemy"], "First": battle3["First"]}
     enemyCountries = battle["EnemyCountries"]
     enemyBuffs = battle["EnemyBuffs"]
