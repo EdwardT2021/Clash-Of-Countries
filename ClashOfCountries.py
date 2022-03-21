@@ -36,6 +36,7 @@ def resource_path(relative_path):
 
     return path.join(base_path, relative_path)
 
+#The below function is a custom 32 bit hash generator that is NOT CRYPTOGRAPHICALLY SECURE used for quick object comparisons 
 def Hash(string: str) -> int:
     hashnum = 0
     for s in string:
@@ -199,7 +200,8 @@ class Card(pygame.sprite.Sprite):
     def SetDetails(self): 
         "Re-calculate statistics/relevant attributes"
         pass       
-
+    
+    #This method resets all flags and positions for the card, returning it to its default state
     def ResetPosition(self):
         self.velocity_x = 0
         self.velocity_y = 0
@@ -424,6 +426,7 @@ class EnemyArmy(Army):
         self.startDefense = True
     
 
+#Below are army subclasses dictating unit compositions
 class EnemyAggressiveArmy(EnemyArmy):
     "Subclass of army for armies controlled by aggressive enemy countries"
     def __init__(self):
@@ -456,7 +459,7 @@ class Buff(Card):
         self.player = player
         self.country = None #type: Country or None
         self.countryText = None #type: pygame.Surface or None
-        self.stats = []
+        self.stats = [] #Used to store text needing placed upon card
     
     def SetDetails(self):
         "Display a symbol based on if it is minor or major buff, and the statistic the buff affects"
@@ -494,7 +497,7 @@ class Buff(Card):
         #This is because the only object that is pickled is the player object, containing references to these classes
 
     def __repr__(self) -> str:
-        return type(self).__name__
+        return type(self).__name__ #Returns the name of the subclass when printed or used as argument for str()
         
 class LinearBuff(Buff):
     "Subclass of buff for additive changes, ie +5"
@@ -739,6 +742,7 @@ class Country(Card):
         self.attacking = False
         self.defending = False
         self.prodpower = self.factories * self.production
+        #The below line is only used for passing data when in a battle across networks
         self.UnitsBought = {"Infantry": 0, "Tank": 0, "Plane": 0, "Fortification": 0, "Defense Artillery": 0, "Attack Artillery": 0}
         self.dead = False
         self.deathImage = pygame.image.load(resource_path("art\\Death.png")).convert_alpha() 
@@ -792,9 +796,11 @@ class Country(Card):
     
     def SetDetails(self):
         "Set and render the statistics and details of the country, ready to be displayed by the draw function"
+        #Below checks to see if card is dead and just puts its name on it if it is
         if self.dead:
             self.stats = [GAME.boldFont.render(self.name, True, WHITE)]
             return
+        #Below sets stats displayed upon the card
         attributes = []
         nameText = GAME.tinyBoldFont.render(self.name, True, WHITE)
         attributes.append(nameText)
@@ -818,6 +824,7 @@ class Country(Card):
         fortsText = GAME.tinyBoldFont.render(forts, True, WHITE)
         attributes.append(fortsText)
         self.stats = attributes
+        #Below sets the values for the box on the right of the country card
         infantry = GAME.tinyBoldFont.render("Infantry: "+str(self.army.infantry), True, WHITE)
         tanks = GAME.tinyBoldFont.render("Tanks: "+str(self.army.tanks), True, WHITE)
         planes = GAME.tinyBoldFont.render("Planes: "+str(self.army.planes), True, WHITE)
@@ -832,7 +839,8 @@ class Country(Card):
         self.armyunits = rect
     
     def PurchaseUnit(self, unit: str):
-        "Set the production queue for a country"
+        "Purchase a unit, where the string is the same as the button strings shown"
+        #Check if theres enough production power left, remove it and add one to the unit
         if unit == "Infantry":
             if self.prodpower >= 75:
                 self.army.AddInfantry(1)
@@ -863,6 +871,7 @@ class Country(Card):
                 self.fortifications += 1
                 self.prodpower -= 300
                 self.UnitsBought[unit] += 1
+        #Reset card details
         self.SetDetails()
     
     def Die(self):
