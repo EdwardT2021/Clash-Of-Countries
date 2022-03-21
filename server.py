@@ -975,7 +975,7 @@ class EloCalculator:
             k = self.k - 8
         elif elo > 2400:
             k = self.k - 16
-        return elo + k*(score - probability)
+        return elo + round(k*(score - probability))
 
 if __name__ == "__main__":
     ELOCALC = EloCalculator(1000, 24)

@@ -849,19 +849,19 @@ class Country(Card):
                 self.prodpower -= 150
                 self.UnitsBought[unit] += 1
         elif unit == "Defense Artillery":
-            if self.prodpower >= 125:
+            if self.prodpower >= 100:
                 self.army.AddDefenseArtillery(1)
-                self.prodpower -= 125
+                self.prodpower -= 100
                 self.UnitsBought[unit] += 1
         elif unit == "Attack Artillery":
-            if self.prodpower >= 125:
+            if self.prodpower >= 100:
                 self.army.AddAttackArtillery(1)
-                self.prodpower -= 125
+                self.prodpower -= 100
                 self.UnitsBought[unit] += 1
         elif unit == "Fortification":
-            if self.prodpower >= 350:
+            if self.prodpower >= 300:
                 self.fortifications += 1
-                self.prodpower -= 350
+                self.prodpower -= 300
                 self.UnitsBought[unit] += 1
         self.SetDetails()
     
