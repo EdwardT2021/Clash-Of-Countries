@@ -419,7 +419,7 @@ class DefensiveCountry(Country):
 
 class Player:
 
-    def __init__(self, username, countries=[], prioritycountries=[], buffs=[], prioritybuffs=[], wins=0, draws=0, losses=0, elo=0, socket=None, key=None):
+    def __init__(self, username, countries=[], prioritycountries=[], buffs=[], prioritybuffs=[], wins=0, losses=0, elo=0, socket=None, key=None):
         "Player object containing relevant player data"
         self.username = username #type: str
         self.countries = countries #type: list[Country]
@@ -428,7 +428,6 @@ class Player:
         self.prioritybuffs = prioritybuffs #type: list[Buff]
         self.wins = wins #type: int
         self.losses = losses #type: int
-        self.draws = draws #type: int
         self.elo = elo #type: int
         self.Battle = False
         self.socket = socket #type: socket.socket
@@ -732,7 +731,7 @@ class Server: #Class containing server methods and attributes
                     
 
             #Creates statement fetching player, country and buff info. Some data repitition, but necessary to quicken loading timess
-            playerinfo = f"SELECT username, wins, draws, losses, elo FROM Player WHERE username = '{username}';"
+            playerinfo = f"SELECT username, wins, losses, elo FROM Player WHERE username = '{username}';"
             prioritycinfo = f"SELECT name, production, towns, type FROM Country WHERE playerID = '{username}' AND priority = 1;"
             countryinfo = f"SELECT name, production, towns, type FROM Country WHERE playerID = '{username}';"
             prioritybinfo = f"SELECT type from Buff WHERE playerID = '{username}' AND priority = 1;"
@@ -744,7 +743,7 @@ class Server: #Class containing server methods and attributes
                 except:
                     raise e.DatabaseAccessError
                 cur.execute(playerinfo)
-                pname, pwins, pdraws, plosses, pelo = cur.fetchone()
+                pname, pwins, plosses, pelo = cur.fetchone()
                 cur.execute(countryinfo)
                 clist = []
                 for country in cur.fetchall():
@@ -788,7 +787,7 @@ class Server: #Class containing server methods and attributes
                             priorityblist.append(b)
                 conn.close()
 
-            player = Player(pname, clist, priorityclist, blist, priorityblist, pwins, pdraws, plosses, pelo, client, key)
+            player = Player(pname, clist, priorityclist, blist, priorityblist, pwins, plosses, pelo, client, key)
             thread = Thread(self.__handle, client, player) #Creates a handle thread
             
             thread.start() #Not added to handlerThreads as is handled by login thread which is in handlerThreads
