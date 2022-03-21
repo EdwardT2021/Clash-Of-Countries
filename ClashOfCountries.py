@@ -505,7 +505,11 @@ class LinearBuff(Buff):
     def SetDetails(self):
         "Overload of the base method, but calls that base method and adds upon it"
         Buff.SetDetails(self)
-        change = "+" + str(self.change) + f" {self.statAffected}" 
+        if isinstance(self, ProductionBuff):
+            change = 50*self.change
+        else:
+            change = self.change
+        change = "+" + str(change) + f" {self.statAffected}" 
         changeText = GAME.tinyBoldFont.render(change, True, BLACK)
         self.stats.append(changeText)
     
@@ -719,7 +723,7 @@ class MajorSiegeDefenseBuff(SiegeDefenseBuff, MajorBuff):
 
 class Country(Card):
     "Base class for all countries"
-    def __init__(self, production, towns, name):
+    def __init__(self, production: int, towns: int, name: str):
         Card.__init__(self)
         self.name = name
         self.factories = 50
@@ -800,7 +804,8 @@ class Country(Card):
         armyMight = "Might: " + str(self.army.GetAttackPower())
         armyMightText = GAME.tinyBoldFont.render(armyMight, True, WHITE)
         attributes.append(armyMightText)
-        armyDefense = "Defense: " + str(self.army.GetDefensePower())
+        armyDefense = self.army.GetDefensePower()
+        armyDefense = "Defense: " + str(armyDefense)
         armyDefenseText = GAME.tinyBoldFont.render(armyDefense, True, WHITE)
         attributes.append(armyDefenseText)
         armySiegeAttack = "Siege Attack: " + str(self.army.GetSiegeAttack())
@@ -809,7 +814,7 @@ class Country(Card):
         armySiegeDefense = "Siege Defense: " + str(self.army.GetSiegeDefense())
         armySiegeDefenseText = GAME.tinyBoldFont.render(armySiegeDefense, True, WHITE)
         attributes.append(armySiegeDefenseText)
-        forts = "Forts: " + str(self.fortifications)
+        forts = "Forts: " + f"+{self.fortifications*200} defense"
         fortsText = GAME.tinyBoldFont.render(forts, True, WHITE)
         attributes.append(fortsText)
         self.stats = attributes
@@ -818,9 +823,10 @@ class Country(Card):
         planes = GAME.tinyBoldFont.render("Planes: "+str(self.army.planes), True, WHITE)
         sdefense = GAME.tinyBoldFont.render("Defense Artillery: "+str(self.army.defenseArtillery), True, WHITE)
         sattack = GAME.tinyBoldFont.render("Attack Artillery: "+str(self.army.siegeArtillery), True, WHITE)
+        forts = GAME.tinyBoldFont.render("Forts: "+str(self.fortifications), True, WHITE)
         rect = pygame.Surface((130, self.cardSize[1]/2))
         rect.fill(BLUE)
-        temp = [infantry, tanks, planes, sdefense, sattack]
+        temp = [infantry, tanks, planes, sdefense, sattack, forts]
         for i in range(len(temp)):
             rect.blit(temp[i], (2, 10+(17*i)))
         self.armyunits = rect
@@ -1007,24 +1013,32 @@ class Connection:
         self.battleSock.settimeout(1)
         self.battleEnemySock = s.socket(s.AF_INET, s.SOCK_STREAM)
         self.battleEnemySock.settimeout(1)
+        for event in GAME.getevent():
+            pass
         self.__PUBLICKEY, self.__PRIVATEKEY = rsa.newkeys(2048)
         failed = True
         errorcount = 0
         while failed:
+            for event in GAME.getevent():
+                pass
             try:
                 self.SOCK.connect((self.HOST, self.PORT))
                 failed = False
-            except:
+            except Exception as e:
+                print(e)
                 errorcount += 1
             if errorcount == 15:
                 raise e.InitialConnectionError
         self.SOCK.send(self.__PUBLICKEY.save_pkcs1("DER"))
         failed = True
         while failed:
+            for event in GAME.getevent():
+                pass
             try:
                 data = self.SOCK.recv(2048)
-                self.__SERVERKEY = rsa.PublicKey.load_pkcs1(data)
-            except:
+                self.__SERVERKEY = rsa.PublicKey.load_pkcs1(data, "DER")
+            except Exception as e:
+                print(e)
                 continue
             failed = False
         t.quit()
@@ -1060,7 +1074,7 @@ class Connection:
         t = Thread(target=LoadScreen, args=["Logging In..."])
         data = CONN.Receive()
         while data["Command"] != "LOGIN":
-            for event in pygame.event.get():
+            for event in GAME.getevent():
                 pass
             data = CONN.Receive()
         if GAME.New:
@@ -1071,7 +1085,7 @@ class Connection:
         print("message sent")
         command = self.Receive()["Command"]
         while command == None:
-            for event in pygame.event.get():
+            for event in GAME.getevent():
                 pass
             command = self.Receive()["Command"]
         t.quit()
@@ -1901,7 +1915,7 @@ class StageManager:
         planes = Button("Plane", BLACK, BLUE, ROYALBLUE, GAME.smallBoldFont, 365, 625, 170, 75, hintText="Cost: 150pp", highlighttext=["Attack: 30", "Defense: 10", "Siege Attack: 0", "Siege Defense: 0"])
         sdefense = Button("Defense Artillery", BLACK, BLUE, ROYALBLUE, GAME.smallBoldFont, 545, 625, 170, 75, hintText="Cost: 125pp", highlighttext=["Attack: 5", "Defense: 5", "Siege Attack: 20", "Siege Defense: 0"])
         sattack = Button("Attack Artillery", BLACK, BLUE, ROYALBLUE, GAME.smallBoldFont, 725, 625, 170, 75, hintText="Cost: 125pp", highlighttext=["Attack: 5", "Defense: 5", "Siege Attack: 0", "Siege Defense: 20"])
-        forts = Button("Fortification", BLACK, BLUE, ROYALBLUE, GAME.smallBoldFont, 905, 625, 170, 75, hintText="Cost: 350pp", highlighttext=["+1 Fort"])
+        forts = Button("Fortification", BLACK, BLUE, ROYALBLUE, GAME.smallBoldFont, 905, 625, 170, 75, hintText="Cost: 350pp", highlighttext=["+1 Fort", "Defense: 200"])
         pp = str(self._CardSelected.prodpower)
         productiontext = TextBox("Production Power: " + pp, BLACK, 5, self._ActionBox.rect.y-32, 30, 300, GAME.smallBoldFont, border=True)
         tempList = [infantry, tanks, planes, sdefense, sattack, forts]
@@ -2023,7 +2037,7 @@ class StageManager:
         attacker, defender = self._Combatants
         if isinstance(attacker, EnemyCountry):
             attacker.army.ResetStart()
-        else:
+        elif isinstance(defender, EnemyCountry):
             defender.army.ResetStart()
         siegeAttack = attacker.army.GetSiegeAttack()
         siegeDefense = defender.army.GetSiegeDefense()

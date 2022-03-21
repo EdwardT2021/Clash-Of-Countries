@@ -1133,9 +1133,6 @@ class Server: #Class containing server methods and attributes
                     conn.commit()
         conn.close()
 
-
-
-
 class EloCalculator:
 
     def __init__(self, mean, k):
