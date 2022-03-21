@@ -432,7 +432,7 @@ class Player:
         self.elo = elo #type: int
         self.Battle = False
         self.socket = socket #type: socket.socket
-        self.key = key
+        self.key = key #type: rsa.PublicKey
     
     def __repr__(self) -> str:
         return self.username
@@ -471,18 +471,31 @@ class Battle:
                 self.p2socket = player
                 p2connected = True
                 print(f"{player2} connected")
-        player1d = {"EnemyCountries": [], "EnemyBuffs": [], "Enemy": [player1.username, player1.wins, player1.losses, player1.elo, self.player1.socket.getpeername()[0]], "First": not self.player1first}
+
+        player1d1 = {"EnemyCountries": []} 
+        player1d2 = {"EnemyBuffs": []} 
+        player1d3 = {"Enemy": [player1.username, player1.wins, player1.losses, player1.elo, self.player1.socket.getpeername()[0]], "First": not self.player1first}
         for c in player1.prioritycountries:
-            player1d["EnemyCountries"].append(c.ToList())
+            player1d1["EnemyCountries"].append(c.ToList())
         for b in player1.prioritybuffs:
-            player1d["EnemyBuffs"].append(str(b))
-        SERVER.send("BATTLE", self.p2socket, self.player2.key, player1d)
-        player2d = {"EnemyCountries": [], "EnemyBuffs": [], "Enemy": [player2.username, player2.wins, player2.losses, player2.elo, self.player2.socket.getpeername()[0]], "First": self.player1first}
+            player1d2["EnemyBuffs"].append(str(b))
+        SERVER.send("BATTLE", self.p2socket, self.player2.key, player1d1)
+        SERVER.send("BATTLE", self.p2socket, self.player2.key, player1d2)
+        SERVER.send("BATTLE", self.p2socket, self.player2.key, player1d3)
+        self.p2socket.send(self.player1.key.save_pkcs1("DER"))
+        
+        player2d1 = {"EnemyCountries": []} 
+        player2d2 = {"EnemyBuffs": []} 
+        player2d3 = {"Enemy": [player2.username, player2.wins, player2.losses, player2.elo, self.player2.socket.getpeername()[0]], "First": self.player1first}
         for c in player2.prioritycountries:
-            player2d["EnemyCountries"].append(c.ToList())
+            player2d1["EnemyCountries"].append(c.ToList())
         for b in player2.prioritybuffs:
-             player2d["EnemyBuffs"].append(str(b))
-        SERVER.send("BATTLE", self.p1socket, self.player1.key, player2d)
+            player2d2["EnemyBuffs"].append(str(b))
+        SERVER.send("BATTLE", self.p1socket, self.player1.key, player2d1)
+        SERVER.send("BATTLE", self.p1socket, self.player1.key, player2d2)
+        SERVER.send("BATTLE", self.p1socket, self.player1.key, player2d3)
+        self.p1socket.send(self.player2.key.save_pkcs1("DER"))
+
         print(f"Battle between {player1.username} and {player2.username} initialised!")
                 
     def Run(self):
@@ -663,11 +676,11 @@ class Server: #Class containing server methods and attributes
             while failed:
                 try:
                     data = client.recv(4096)
-                    servkey = self.__pubkey.save_pkcs1("PEM")
+                    servkey = self.__pubkey.save_pkcs1("DER")
                     client.send(servkey)
                 except:
                     continue
-                key = rsa.PublicKey.load_pkcs1(data, "PEM")
+                key = rsa.PublicKey.load_pkcs1(data, "DER")
                 failed = False
             failed = True
             while failed:

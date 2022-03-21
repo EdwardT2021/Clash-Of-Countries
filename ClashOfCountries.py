@@ -1018,7 +1018,7 @@ class Connection:
                 errorcount += 1
             if errorcount == 15:
                 raise e.InitialConnectionError
-        self.SOCK.send(self.__PUBLICKEY.save_pkcs1("PEM"))
+        self.SOCK.send(self.__PUBLICKEY.save_pkcs1("DER"))
         failed = True
         while failed:
             try:
@@ -1126,12 +1126,22 @@ class Connection:
     def SetBattleSock(self):
         self.battleEnemySock.close()
         self.SOCK = self.battleSock
+    
+    def SendToPlayer(self, command: str, key: rsa.PublicKey, *args):
+        "Takes a command and arguments and encodes and sends to server"
+        d = {"AUTH": AUTH, "Command": None, "Args": None}
+        d["Command"] = command
+        if args:
+            d["Args"] = args
+        message = json.dumps(d)
+        self.SOCK.send(rsa.encrypt(message.encode("utf-8"), key))
+        print(message, "sent to", self.SOCK.getpeername())
 
 ##################################################################################
 
 class Player:
 
-    def __init__(self, username="", password=0, countries=[], buffs=[], wins=0, losses=0, elo=0, ip=""):
+    def __init__(self, username="", password=0, countries=[], buffs=[], wins=0, losses=0, elo=0, ip="", key=""):
         "Player object containing relevant player data"
         self.username = username #type: str
         self.password = password #type: str
@@ -1143,6 +1153,8 @@ class Player:
         self.ip = ip
         self.prioritycountries = [] #type: list[Country]
         self.prioritybuffs = [] #type: list[Buff]
+        if key != "":
+            self.key = rsa.PublicKey.load_pkcs1(key, "DER")
     
     def Text(self) -> str:
         "Returns a string in the form USERNAME - Elo: ELO"
@@ -2894,22 +2906,30 @@ def Play():
     t.join()
     t = Thread(target=LoadScreen, args=["Initialising Battle..."])
     data = CONN.Receive()
-    while data["Command"] != "BATTLE":
+    while data["Command"] != "BATTLE": #Expects Dict containing key "EnemyCountries"
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                t.quit()
-        if not t.is_alive():
-            CONN.Send("UNMATCHMAKE")
-            return
+            pass
         data = CONN.Receive()
     battle = data["Args"][0]
+    data2 = CONN.Receive() 
+    while data2["Command"] != "BATTLE": #Expects Dict containing key "EnemyBuffs"
+        for event in pygame.event.get():
+            pass
+        data2 = CONN.Receive()
+    battle2 = data2["Args"][0]
+    data3 = CONN.Receive() 
+    while data3["Command"] != "BATTLE": #Expects Dict containing key "EnemyBuffs"
+        for event in pygame.event.get():
+            pass
+        data3 = CONN.Receive()
+    battle3 = data3["Args"][0]
     enemyCountries = battle["EnemyCountries"]
-    enemyBuffs = battle["EnemyBuffs"]
+    enemyBuffs = battle2["EnemyBuffs"]
     enemyCountryObjects = []
     enemyBuffObjects = []
     playerCountries = GAME.PLAYER.prioritycountries.copy()
     playerBuffs = GAME.PLAYER.prioritybuffs.copy()
-    enemy = battle["Enemy"]
+    enemy = battle3["Enemy"]
     for country in enemyCountries:
         if country[2] == "AGG":
             c = EnemyAggressiveCountry(country[3], country[1], country[0])
