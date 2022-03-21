@@ -11,15 +11,8 @@ SIEGE ATTACK represents your SIEGE ATTACK POWER - This will be covered shortly
 SIEGE DEFENSE represents your SIEGE DEFENSE POWER - This will also be covered shortly
 FORTIFICATIONS represents how well fortified your country is
 There are a few units in the game that help decide your attack/defense statistics
-INFANTRY, with a DEFENSE POWER of 12, and an ATTACK POWER of 4
-TANKS, with a DEFENSE POWER of 15, an ATTACK POWER of 25, and a SIEGE ATTACK POWER of 5
-PLANES, with a DEFENSE POWER of 10, and an ATTACK POWER of 30
-SIEGE ARTILLERY, with a DEFENSE POWER of 5, an ATTACK POWER of 5, and a SIEGE ATTACK POWER of 20
-DEFENSE ARTILLERY, with a DEFENSE POWER of 5, an ATTACK POWER of 5, and a SIEGE DEFENSE POWER of 20
-These units are created via PRODUCTION, which is represented by 50x the country`s PRODUCTION STAT
-This number represents the production power available each turn, which is used to build units!
-You can tell each country what unit to build by setting the PRODUCTION QUEUE
-In the production queue, you choose units in PRIORITY ORDER, highest priority being first!
+INFANTRY, TANKS, PLANES, SIEGE DEFENSE, SIEGE ATTACK, and FORTIFICATIONS
+These units are built via PRODUCTION POWER, displayed in the production menu
 When you want to attack another country, you must first overcome its FORTIFICATIONS
 This is done via pitting your SIEGE ATTACK POWER against it 
 One fortification is destroyed by 40 siege attack power!

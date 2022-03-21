@@ -1219,6 +1219,7 @@ class Game:
         self.MarchingSound = pygame.mixer.Sound(resource_path("sfx\\march.ogg"))
     
     def LoadPlayer(self):
+        t = Thread(LoadScreen, ["Loading Player Data..."])
         try:
             with open(path.abspath(path.dirname(sys.argv[0])) + "\COC.save", "rb") as f:
                 self.PLAYER = pickle.load(f)
@@ -1226,9 +1227,12 @@ class Game:
                     raise TypeError
                 f.close()
             self.New = False
-        except Exception as e:
+        except:
             self.Save()
             self.New = True
+        t.quit()
+        t.join()
+        
 
     def Draw_bg(self):
         "Draws background for the battles"
@@ -1249,12 +1253,16 @@ class Game:
         self.Area = area
 
     def Save(self):
-        "Saves the player object to Save.txt"
+        "Saves the player object to COC.save"
+        t = Thread(LoadScreen, ["Saving Game..."])
         with open(path.abspath(path.dirname(sys.argv[0])) + "\COC.save", "wb") as f:
             pickle.dump(self.PLAYER, f)
             f.close()
-    
+        t.quit()
+        t.join()
+
     def Update(self):
+        self.__screen.fill(BLACK)
         if self.shaking: #Checks if shaking flag set
             self.shakeMagnitudeRange *= -1 #Flip the offset from left to right or right to left
             if self.shakeMagnitudeRange > 0: #If its not 0, decrement the absolute value by 0.5
@@ -1273,10 +1281,10 @@ class Game:
         else:
             self.UpdateFPS()
             self.__screen.blit(self.screen, (0, 0)) #If not shaking, skip comparisons and operations and blit it to display normally
-        self.screen = pygame.Surface(self.__screen.get_size())
         self.clock.tick(self.FPS) #Add one to the frame counter
         
         pygame.display.update() #Updates display
+        self.screen.fill(BLACK)
 
     def Shake(self, magnitude: int):
         "Sets the screen Shake flags and sets the magnitude in pixels"
@@ -1558,7 +1566,7 @@ class Battle:
         t = Thread(target=LoadScreen, args=["Waiting for enemy..."])
         data = CONN.Receive()
         while data["Command"] != "CHANGES":
-            for event in pygame.event.get():
+            for event in GAME.getevent():
                 pass
             data = CONN.Receive()
         t.quit()
@@ -2007,8 +2015,8 @@ class StageManager:
             defender.army.ResetStart()
         siegeAttack = attacker.army.GetSiegeAttack()
         siegeDefense = defender.army.GetSiegeDefense()
-        siegeAttack -= round(siegeDefense / 3)
-        defender.fortifications -= round(siegeAttack / 40)
+        siegeAttack -= siegeDefense // 3
+        defender.fortifications -= siegeAttack // 40
         if defender.fortifications < 0:
             defender.fortifications = 0
         attack = attacker.army.GetAttackPower()
@@ -2878,6 +2886,8 @@ def Play():
             if event.type == pygame.QUIT:
                 t.quit()
                 CONN.Send("UNMATCHMAKE")
+                t.join()
+                return
         data = CONN.Receive()
     CONN.SetBattleMode()
     t.quit()
