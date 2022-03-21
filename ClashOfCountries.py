@@ -2923,6 +2923,13 @@ def Play():
             pass
         data3 = CONN.Receive()
     battle3 = data3["Args"][0]
+    received = False
+    while not received:
+        try:
+            key = CONN.SOCK.recv(2048)
+            received = True
+        except:
+            pass
     enemyCountries = battle["EnemyCountries"]
     enemyBuffs = battle2["EnemyBuffs"]
     enemyCountryObjects = []
@@ -2940,7 +2947,7 @@ def Play():
         enemyCountryObjects.append(c)
     for buff in enemyBuffs:
         enemyBuffObjects.append(eval(buff + "Buff(False)"))
-    enemy = Player(enemy[0], countries=enemyCountryObjects, buffs=enemyBuffObjects, wins=enemy[1], losses=enemy[2], elo=enemy[3])
+    enemy = Player(enemy[0], countries=enemyCountryObjects, buffs=enemyBuffObjects, wins=enemy[1], losses=enemy[2], elo=enemy[3], ip=enemy[4], key=key)
     battle = Battle(GAME.PLAYER, playerCountries, playerBuffs, enemy, enemyCountryObjects, enemyBuffObjects, battle["First"])
     t.quit()
     t.join()
