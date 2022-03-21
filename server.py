@@ -16,114 +16,7 @@ def Hash(string: str) -> int:
     for s in string:
         hashnum = (hashnum*607 ^ ord(s)*409) & 0xFFFFFFFF
     return hashnum
-# The below class is another abstract class, containing basic details for each type of army.
-class Army:
-    "Base class for an army, stored in Country"
-    def __init__(self, infantry: int, tanks: int, planes: int, defenseArtillery: int, siegeArtillery: int):
-        self.infantry = infantry
-        self.tanks = tanks
-        self.planes = planes
-        self.defenseArtillery = defenseArtillery
-        self.siegeArtillery = siegeArtillery
-        #Below show the troop attack and defense values
-        #Infantry: 4 Attack, 12 Defense, 2 Siege Defense
-        #Tanks: 25 Attack, 15 Defense, 5 Siege Attack
-        #Planes: 30 Attack, 10 Defense
-        #Siege and Defense Artillery: 5 Attack, 5 Defense, 20 in their respective siege categories
-        self.AttackPower = (self.infantry*4)+(self.tanks*25)+(self.planes*30)+((self.siegeArtillery+self.defenseArtillery)*5)
-        self.DefensePower = (self.infantry*12)+(self.tanks*15)+(self.planes*10)+((self.siegeArtillery+self.defenseArtillery)*5)
-        self.SiegeAttackPower = (self.siegeArtillery*20)+(self.tanks*5)
-        self.SiegeDefensePower = (self.defenseArtillery*20)+(self.infantry*2)
-        self.AttackModifier = 1 #Modifiers, controlled by Buffs
-        self.DefenseModifier = 1
-        self.SiegeAttackModifier = 1
-        self.SiegeDefenseModifier = 1
-    
-    def GetAttackPower(self) -> int:
-        return int(self.AttackPower * self.AttackModifier)
-    
-    def GetDefensePower(self) -> int:
-        return int(self.DefensePower * self.DefenseModifier)
-    
-    def GetSiegeAttack(self) -> int:
-        return int(self.SiegeAttackPower * self.SiegeAttackModifier)
 
-    def GetSiegeDefense(self) -> int:
-        return int(self.SiegeDefensePower * self.SiegeDefenseModifier)
-    
-    def Defeat(self):
-        "Call upon defeating this army. Reduces army to roughly 65% of its original strength"
-        self.infantry = round((self.infantry / 10) * 6.5)
-        self.tanks = round((self.tanks / 10) * 6.5)
-        self.planes = round((self.planes / 10) * 6.5)
-        self.siegeArtillery = round((self.siegeArtillery / 10) * 6.5)
-        self.defenseArtillery = round((self.defenseArtillery / 10) * 6.5)
-        self.CalculateStats()
-    
-    def Victory(self):
-        "Call upon defeating another army. Reduces army to roughly 85% of its original strength"
-        self.infantry = round((self.infantry / 10) * 8.5)
-        self.tanks = round((self.tanks / 10) * 8.5)
-        self.planes = round((self.planes / 10) * 8.5)
-        self.siegeArtillery = round((self.siegeArtillery / 10) * 8.5)
-        self.defenseArtillery = round((self.defenseArtillery / 10) * 8.5)
-        self.CalculateStats()
-
-    def AddInfantry(self, number: int):
-        "Adds a number of infantry and changes stats"
-        self.infantry += number
-        self.CalculateStats()
-    
-    def AddTanks(self, number: int):
-        "Adds a number of tanks and changes stats"
-        self.tanks += number
-        self.CalculateStats()
-    
-    def AddPlanes(self, number: int):
-        "Adds a number of planes and changes stats"
-        self.planes += number
-        self.CalculateStats()
-    
-    def AddDefenseArtillery(self, number: int):
-        "Adds a number of Defense Artillery and changes stats"
-        self.defenseArtillery += number
-        self.CalculateStats()
-
-    def AddAttackArtillery(self, number: int):
-        "Adds a number of Attack Artillery and changes stats"
-        self.siegeArtillery += number
-        self.CalculateStats()
-    
-    def CalculateStats(self):
-        "Calculates new values for army"
-        self.AttackPower = (self.infantry*4)+(self.tanks*25)+(self.planes*30)+((self.siegeArtillery+self.defenseArtillery)*5)
-        self.DefensePower = (self.infantry*12)+(self.tanks*15)+(self.planes*10)+((self.siegeArtillery+self.defenseArtillery)*5)
-        self.SiegeAttackPower = (self.siegeArtillery*20)+(self.tanks*5)
-        self.SiegeDefensePower = (self.defenseArtillery*20)+(self.infantry*1)
-    
-    def ResetModifiers(self):
-        "Resets all modifiers back to 1"
-        self.AttackModifier = 1
-        self.DefenseModifier = 1
-        self.SiegeDefenseModifier = 1
-        self.SiegeAttackModifier = 1    
-
-class AggressiveArmy(Army):
-    "Subclass of army for armies controlled by aggressive player countries"
-    def __init__(self):
-        super(AggressiveArmy, self).__init__(25, 15, 15, 5, 15)
-
-class BalancedArmy(Army):
-    "Subclass of army for armies controlled by balanced player countries"
-    def __init__(self):
-        super(BalancedArmy, self).__init__(50, 10, 10, 10, 10)
-
-class DefensiveArmy(Army):
-    "Subclass of army for armies controlled by defensive player countries"
-    def __init__(self):
-        super(DefensiveArmy, self).__init__(75, 5, 5, 15, 5)
-          
-#################################################################################
 
 class Buff:
     "Base class for Buffs"
@@ -132,12 +25,7 @@ class Buff:
         self.linear = linear
         self.multiplicative = not self.linear
         self.change = change
-        self.country = None #type: Country or None
 
-    def ApplyToCountry(self, country: 'Country'):
-        "Sets the text displaying which country it is assigned to and stores the country in the .country attribute"
-        self.country = country
-    
     def __hash__(self) -> str:
         "Simple hashing function for the class. No other unique buff will have this combination string" 
         return Hash(f"{self.change}{self.statAffected}{self.linear}")
@@ -307,70 +195,10 @@ class Country:
     "Base class for all countries"
     def __init__(self, production: int, towns: int, name: int):
         self.name = name
-        self.factories = 50
         self.production = production
         self.towns = towns
-        self.fortifications = 0
-        self.army = None #type: Army
-        self.Buff = None #type: Buff or None
         self.type = str
-        self.dead = False
-        self.attacking = False
-        self.defending = False
-        self.dead = False
 
-    def AddBuff(self, Buff: Buff):
-        "Add a buff to the country"
-        self.Buff = Buff
-        if Buff.statAffected == "Attack":
-            self.army.AttackModifier = Buff.change
-        elif Buff.statAffected == "Defense":
-            self.army.DefenseModifier = Buff.change
-        elif Buff.statAffected == "SiegeAttack":
-            self.army.SiegeAttackModifier = Buff.change
-        elif Buff.statAffected == "SiegeDefense":
-            self.army.SiegeDefenseModifier = Buff.change
-        elif Buff.statAffected == "Towns":
-            self.ChangeTowns(-Buff.change)
-        elif Buff.statAffected == "Production":
-            self.production += Buff.change
-
-    def RemoveBuff(self):
-        "Remove the current buff"
-        if self.Buff.statAffected == "Towns":
-            self.ChangeTowns(self.Buff.change)
-        elif self.Buff.statAffected == "Production":
-            self.production -= self.Buff.change
-        self.Buff = None
-        self.army.ResetModifiers()
-
-    def ChangeTowns(self, num: int):
-        "Change the number of towns, set the dead flag if it is <= 0"
-        self.towns -= num
-        if self.towns <= 0:
-            self.dead = True
-    
-    def SetProductionQueue(self, newQueue: list):
-        "Set the production queue for a country"
-        self.ProductionQueue.ChangeQueue(newQueue)
-    
-    def AddProductionOutput(self):
-        "Calculates and adds the production output to the country"
-        production = self.production
-        if self.Buff is not None and self.Buff.statAffected == "Production":
-            production += self.Buff.change
-        productionlist = self.ProductionQueue.CalcOutput(self.factories * production)
-        self.army.AddInfantry(productionlist[0])
-        self.army.AddTanks(productionlist[1])
-        self.army.AddPlanes(productionlist[2])
-        self.fortifications += productionlist[3]
-        self.army.AddAttackArtillery(productionlist[4])
-        self.army.AddDefenseArtillery(productionlist[5])
-    
-    def Die(self):
-        "Sets the dead flag"
-        self.dead = True
-    
     def __hash__(self) -> str:
         "Creates a unique hash for the country"
         return Hash(f"{self.name}{self.production}{self.towns}{self.type}")
@@ -397,24 +225,18 @@ class AggressiveCountry(Country):
     "Subclass of country for aggressive countries"
     def __init__(self, name: str, production: int, towns: int):
         super(AggressiveCountry, self).__init__(production, towns, name)
-        self.army = AggressiveArmy()
-        self.fortifications = 1
         self.type = "AGG"
 
 class BalancedCountry(Country):
     "Subclass of country for balanced countries"
     def __init__(self, name: str, production: int, towns: int):
         super(BalancedCountry, self).__init__(production, towns, name)
-        self.army = BalancedArmy()
-        self.fortifications = 2
         self.type = "BAL"
 
 class DefensiveCountry(Country):
     "Subclass of country for defensive countries"
     def __init__(self, name: str, production: int, towns: int):
         super(DefensiveCountry, self).__init__(production, towns, name)
-        self.army = DefensiveArmy()
-        self.fortifications = 3
         self.type = "DEF"
 
 class Player:
@@ -552,8 +374,8 @@ class Battle:
         attacker, defender = c1, c2
         siegeAttack = attacker.army.GetSiegeAttack()
         siegeDefense = defender.army.GetSiegeDefense()
-        siegeAttack -= round(siegeDefense / 3)
-        defender.fortifications -= round(siegeAttack / 40)
+        siegeAttack -= siegeDefense // 3
+        defender.fortifications -= siegeAttack // 100
         if defender.fortifications < 0:
             defender.fortifications = 0
         attack = attacker.army.GetAttackPower()
@@ -565,7 +387,7 @@ class Battle:
         else:
             victory = True
         if victory:
-            townLoss = round(attack / 25)
+            townLoss = attack // 25
             defender.towns -= townLoss
             defender.army.Defeat()
             attacker.army.Victory()

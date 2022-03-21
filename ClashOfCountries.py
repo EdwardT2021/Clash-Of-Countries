@@ -2648,7 +2648,7 @@ def MainMenu():
 
 def Tutorial():
     GAME.Reset()
-    enemyCountries = [EnemyBalancedCountry(25, 4, "Italy"), EnemyAggressiveCountry(25, 4, "Hungary")]
+    enemyCountries = [EnemyBalancedCountry(25, 40, "Italy"), EnemyAggressiveCountry(25, 40, "Hungary")]
     enemyBuffs = [MinorProductionBuff(False), MinorDefenseBuff(False)]
     playerCountries = [PlayerBalancedCountry(25, 40, "Angola"), PlayerAggressiveCountry(25, 40, "Canada")]
     playerBuffs = [MajorAttackBuff(True), MinorTownsBuff(True)]
