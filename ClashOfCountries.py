@@ -742,6 +742,7 @@ class Country(Card):
         self.attacking = False
         self.defending = False
         self.prodpower = self.factories * self.production
+        self.prodpowerbuffadded = False
         #The below line is only used for passing data when in a battle across networks
         self.UnitsBought = {"Infantry": 0, "Tank": 0, "Plane": 0, "Fortification": 0, "Defense Artillery": 0, "Attack Artillery": 0}
         self.dead = False
@@ -775,7 +776,8 @@ class Country(Card):
         elif Buff.statAffected == "Towns":
             self.ChangeTowns(-Buff.change)
         elif Buff.statAffected == "Production":
-            self.production += Buff.change
+            self.prodpower += Buff.change * self.factories
+            self.prodpowerbuffadded = True
         self.SetDetails()
 
     def RemoveBuff(self):
@@ -783,7 +785,7 @@ class Country(Card):
         if self.Buff.statAffected == "Towns":
             self.ChangeTowns(self.Buff.change)
         elif self.Buff.statAffected == "Production":
-            self.production -= self.Buff.change
+            self.prodpower = max(self.prodpower - self.Buff.change, 0)
         self.Buff = None
         self.army.ResetModifiers()
         self.SetDetails()
@@ -1013,7 +1015,7 @@ class Connection:
 
     def __init__(self):
         t = Thread(target=LoadScreen, args=["Connecting to server!"])
-        self.HOST = "192.168.56.1"
+        self.HOST = "172.16.6.121"
         self.PORT = 11034
         self.SOCK = s.socket(s.AF_INET, s.SOCK_STREAM)
         self.regularSock = self.SOCK
@@ -1105,11 +1107,17 @@ class Connection:
             return False
     
     def AddCountry(self, c: Country):
-        self.Send("ADDCOUNTRY", c.name, c.towns, c.type, c.production)
+        if hash(c) in [hash(x) for x in GAME.PLAYER.countries]:
+            return
+        GAME.PLAYER.countries.append(c)
+        #self.Send("ADDCOUNTRY", c.name, c.towns, c.type, c.production)
     
     def AddBuff(self, b: Buff):
+        if hash(b) in [hash(x) for x in GAME.PLAYER.buffs]:
+            return
+        GAME.PLAYER.buffs.append(b)
         a = [type(b).__name__[:-4]]
-        self.Send("ADDBUFF", a)
+        #self.Send("ADDBUFF", a)
     
     def SetBattleMode(self):
         self.PORT = 11035
@@ -1227,7 +1235,7 @@ class Game:
         self.__screen = pygame.display.set_mode((self.SCREENWIDTH, self.SCREENHEIGHT))
         pygame.display.set_icon(pygame.image.load(resource_path("clashofcountries.ico")).convert_alpha())
         self.screen = pygame.Surface((self.SCREENWIDTH, self.SCREENHEIGHT)).convert_alpha()
-        self.FPS = 60
+        self.FPS = 65
         self.boldFont = pygame.font.Font(resource_path("fonts\\rexlia.otf"), 24)
         self.regularFont = pygame.font.Font(resource_path("fonts\\rexlia.otf"), 14)
         self.tinyBoldFont = pygame.font.Font(resource_path("fonts\\rexlia.otf"), 11)
@@ -1636,7 +1644,7 @@ class Battle:
             eloGain = elo - GAME.PLAYER.elo
             GAME.PLAYER.ChangeElo(elo)
             elo = str(elo)
-        rewardCard = self.GetRewards(win=True) #type: Card
+        rewardCard = self.GetRewards() #type: Card
         if isinstance(rewardCard, Country):
             CONN.AddCountry(rewardCard)
         elif isinstance(rewardCard, Buff):
@@ -1662,23 +1670,27 @@ class Battle:
             GAME.Update()
         self.run = False
 
-    def GetRewards(self, win=False) -> Card:
+    def GetRewards(self) -> Card:
         if isinstance(self, TutorialBattle):
-            card = PlayerDefensiveCountry(25, 40, "Japan")
-        else:
-            pass
-        hashofcard = hash(card)
-        Unique = True
-        for country in self.GameBar.player.countries:
-            if hash(country) == hashofcard:
-                Unique = False
-                break
-        if Unique:
-            self.GameBar.player.countries.append(card)
-        if win:
-            self.GameBar.player.wins += 1
-        else:
-            self.GameBar.player.losses += 1
+            CONN.Send("GETREWARDTUTORIAL")
+        data = CONN.Receive()
+        while data["Command"] != "REWARD":
+            for event in GAME.getevent():
+                pass
+            data = CONN.Receive()
+        if data["Args"][0] == "COUNTRY":
+            name = data["Args"][1][0]
+            towns = data["Args"][1][1]
+            subclass = data["Args"][1][2]
+            production = data["Args"][1][3]
+            if subclass == "AGG":
+                card = PlayerAggressiveCountry(production, towns, name)
+            elif subclass == "BAL":
+                card = PlayerBalancedCountry(production, towns, name)
+            elif subclass == "DEF":
+                card = PlayerDefensiveCountry(production, towns, name)
+        elif data["Args"][0] == "BUFF":
+            card = eval(data["Args"][1]+"Buff()")
         return card
 
 class TutorialBattle(Battle):
@@ -1861,7 +1873,8 @@ class StageManager:
             country.Buff.country = None
             country.RemoveBuff()
         country.AddBuff(self._CardSelected)
-        self._CardSelected.ApplyToCountry(country)
+        if isinstance(self._CardSelected, Buff):
+            self._CardSelected.ApplyToCountry(country)
         for country in self._PlayerCountries:
             country.highlighted = False
         self.Reset()
@@ -2051,7 +2064,9 @@ class StageManager:
         siegeAttack = attacker.army.GetSiegeAttack()
         siegeDefense = defender.army.GetSiegeDefense()
         siegeAttack -= siegeDefense // 3
-        defender.fortifications -= siegeAttack // 40
+        newForts = defender.fortifications - siegeAttack // 60
+        attacker.army.siegeArtillery = max(attacker.army.siegeArtillery - defender.fortifications, 0)
+        defender.fortifications = newForts
         if defender.fortifications < 0:
             defender.fortifications = 0
         attack = attacker.army.GetAttackPower()
@@ -2140,6 +2155,11 @@ class StageManager:
                 attacks.append(actions[0])
         for card in self._Countries:
             card.prodpower = card.factories * card.production
+            card.prodpowerbuffadded = False
+            if card.Buff.statAffected == "Production":
+                card.prodpower += card.Buff.change * card.factories
+                card.prodpowerbuffadded = True
+            
         self._AttackTracker.NewTurn(attacks, self._Battle.playerFirst)
         self.NextStage()
     
@@ -2660,7 +2680,7 @@ def Tutorial():
     enemyCountries = [EnemyBalancedCountry(25, 40, "Italy"), EnemyAggressiveCountry(25, 40, "Hungary")]
     enemyBuffs = [MinorProductionBuff(False), MinorDefenseBuff(False)]
     playerCountries = [PlayerBalancedCountry(25, 40, "Angola"), PlayerAggressiveCountry(25, 40, "Canada")]
-    playerBuffs = [MajorAttackBuff(True), MinorTownsBuff(True)]
+    playerBuffs = [MajorAttackBuff(True), MajorProductionBuff(True)]
     enemy = Player(username="EnemyBot", elo=1000)
     player = GAME.PLAYER
     if GAME.New:

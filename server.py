@@ -366,38 +366,12 @@ class Battle:
         SERVER.send("ELO", winsock, winner.key, winner.elo)
         SERVER.send("ELO", losesock, loser.key, loser.elo)
         SERVER.getReward(winsock, winner)
-        SERVER.send("REWARD", losesock, loser.key, None)
+        if random.random() >= 0.3:
+            SERVER.getReward(losesock, loser)
+        else:
+            SERVER.send("REWARD", losesock, loser.key, "NONE")
         winner.Battle = None
         loser.Battle = None
-
-    def CalculateBattleOutcome(self, c1: Country, c2: Country):
-        attacker, defender = c1, c2
-        siegeAttack = attacker.army.GetSiegeAttack()
-        siegeDefense = defender.army.GetSiegeDefense()
-        siegeAttack -= siegeDefense // 3
-        defender.fortifications -= siegeAttack // 100
-        if defender.fortifications < 0:
-            defender.fortifications = 0
-        attack = attacker.army.GetAttackPower()
-        defense = defender.army.GetDefensePower()
-        attack -= defender.fortifications * 200
-        attack -= defense
-        if attack <= 0:
-            victory = False
-        else:
-            victory = True
-        if victory:
-            townLoss = attack // 25
-            defender.towns -= townLoss
-            defender.army.Defeat()
-            attacker.army.Victory()
-            if defender.towns <= 0:
-                defender.towns = 0
-                defender.Die()
-        else:
-            defender.army.Victory()
-            attacker.army.Defeat()
-
 
 class Thread(threading.Thread): #Custom class for threading
 
@@ -624,7 +598,7 @@ class Server: #Class containing server methods and attributes
             except:
                 raise e.DatabaseAccessError
             try:
-                query = f"INSERT INTO Player VALUES ('{username}', '{password}', 0, 0, 0, 1000);"
+                query = f"INSERT INTO Player VALUES ('{username}', '{password}', 0, 0, 1000);"
                 cur.execute(query)
                 conn.commit()
                 c1 = BalancedCountry("Angola", 25, 40) 
@@ -636,7 +610,7 @@ class Server: #Class containing server methods and attributes
                 cur.execute(query + c2)
                 conn.commit()
                 b1 = MajorAttackBuff()
-                b2 = MinorTownsBuff()
+                b2 = MajorProductionBuff()
                 query = "INSERT INTO Buff (type, playerID, priority, hash) VALUES "
                 b1 = f"('MajorAttack', '{username}', 1, {hash(b1)});"
                 b2 = f"('MinorTowns', '{username}', 1, {hash(b2)});"
@@ -793,6 +767,9 @@ class Server: #Class containing server methods and attributes
                     conn.commit()
                     conn.close()
             
+            elif command == "GETREWARDTUTORIAL":
+                self.getReward(client, player)
+            
     def __matchmakeInsert(self, player: Player):
         elo = player.elo
         if elo <= 1000:
@@ -913,7 +890,7 @@ class Server: #Class containing server methods and attributes
                 card = BalancedCountry(name, production, towns)
             elif subclass == "DEF":
                 card = DefensiveCountry(name, production, towns)
-            self.send("REWARD", client, player.key, [subclass, towns, production, name])
+            self.send("REWARD", client, player.key, "COUNTRY", name, towns, subclass, production)
             with self.__databaseLock:
                 try:
                     conn = sqlite3.connect("playerData.sqlite3")
@@ -937,7 +914,7 @@ class Server: #Class containing server methods and attributes
             stats = ["Towns", "Production", "Attack", "Defense", "SiegeAttack", "SiegeDefense", "Fortification"]
             stat = stats[random.randint(0, len(stats)-1)]
             card = eval(subclass + stat + "Buff()")
-            self.send("REWARD", client, player.key, subclass+stat)
+            self.send("REWARD", client, player.key, "BUFF", subclass+stat)
             with self.__databaseLock:
                 try:
                     conn = sqlite3.connect("playerData.sqlite3")
