@@ -1140,7 +1140,6 @@ class Connection:
         self.SOCK = self.regularSock
     
     def SetBattlePlayerMode(self, enemyIP: str):
-        t = Thread(LoadScreen, ["Connecting to opponent..."])
         connected = False
         while not connected:
             try:
@@ -1151,8 +1150,6 @@ class Connection:
             for event in pygame.event.get():
                 pass
         self.SOCK = self.battleEnemySock
-        t.quit()
-        t.join()
     
     def SetBattleSock(self):
         self.battleEnemySock.close()

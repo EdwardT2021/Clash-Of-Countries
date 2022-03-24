@@ -304,6 +304,7 @@ class Battle:
         SERVER.send("BATTLE", self.p2socket, self.player2.key, player1d2)
         SERVER.send("BATTLE", self.p2socket, self.player2.key, player1d3)
         self.p2socket.send(self.player1.key.save_pkcs1("DER"))
+        print("sent to ", self.p2socket.getpeername())
         
         player2d1 = {"EnemyCountries": []} 
         player2d2 = {"EnemyBuffs": []} 
@@ -316,6 +317,7 @@ class Battle:
         SERVER.send("BATTLE", self.p1socket, self.player1.key, player2d2)
         SERVER.send("BATTLE", self.p1socket, self.player1.key, player2d3)
         self.p1socket.send(self.player2.key.save_pkcs1("DER"))
+        print("sent to ", self.p1socket.getpeername())
 
         print(f"Battle between {player1.username} and {player2.username} initialised!")
                 
