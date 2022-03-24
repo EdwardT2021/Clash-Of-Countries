@@ -2954,18 +2954,21 @@ def Play():
             pass
         data = CONN.Receive()
     battle = data["Args"][0]
+    print(battle)
     data2 = CONN.Receive() 
     while data2["Command"] != "BATTLE": #Expects Dict containing key "EnemyBuffs"
         for event in pygame.event.get():
             pass
         data2 = CONN.Receive()
     battle2 = data2["Args"][0]
+    print(battle2)
     data3 = CONN.Receive() 
     while data3["Command"] != "BATTLE": #Expects Dict containing key "EnemyBuffs"
         for event in pygame.event.get():
             pass
         data3 = CONN.Receive()
     battle3 = data3["Args"][0]
+    print(battle3)
     received = False
     while not received:
         try:
@@ -2991,7 +2994,7 @@ def Play():
     for buff in enemyBuffs:
         enemyBuffObjects.append(eval(buff + "Buff(False)"))
     enemy = Player(enemy[0], countries=enemyCountryObjects, buffs=enemyBuffObjects, wins=enemy[1], losses=enemy[2], elo=enemy[3], ip=enemy[4], key=key)
-    battle = Battle(GAME.PLAYER, playerCountries, playerBuffs, enemy, enemyCountryObjects, enemyBuffObjects, battle["First"])
+    battle = Battle(GAME.PLAYER, playerCountries, playerBuffs, enemy, enemyCountryObjects, enemyBuffObjects, battle3["First"])
     t.quit()
     t.join()
     battle.Run()
