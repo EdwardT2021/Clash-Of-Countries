@@ -1130,7 +1130,7 @@ class Connection:
                 self.SOCK.connect((self.HOST, 11035))
                 connected = True
             except Exception as e:
-                if s.errortab[10060] in str(e):
+                if s.errorTab[10060] in str(e):
                     continue
                 self.SetBattleSock()
                 return
