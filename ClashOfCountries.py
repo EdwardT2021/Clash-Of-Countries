@@ -1525,8 +1525,6 @@ class Battle:
         GAME.MusicPlayer.unload()
         GAME.MusicPlayer.load(resource_path("music\\Battle.ogg"))
         self.PlayerActions = [[[hash(self.countries[0]), None], [], None], [[hash(self.countries[1]), None], [], None]]
-        if not isinstance(self, TutorialBattle):
-            CONN.SetBattlePlayerMode(enemy.ip)
     
     def Run(self):
         "Begin the battle game loop"
@@ -2945,6 +2943,34 @@ def Play():
     t.quit()
     t.join()
     t = Thread(target=LoadScreen, args=["Initialising Battle..."])
+    setupdata = CONN.Receive()
+    while setupdata["Command"] != "IP":
+        for event in GAME.getevent():
+            pass
+        setupdata = CONN.Receive()
+    received = False
+    while not received:
+        try:
+            key = CONN.SOCK.recv(2048)
+            received = True
+        except:
+            pass
+        for event in GAME.getevent():
+            pass
+    enemy = Player(ip=setupdata["Args"][0], key=key)
+    CONN.SetBattlePlayerMode(setupdata["Args"][0])
+    d1 = {"Countries": []}
+    d2 = {"Buffs": []}
+    d3 = {"Player": [GAME.PLAYER.username, GAME.PLAYER.elo], "First": setupdata["Args"][1]}
+    countries = GAME.PLAYER.prioritycountries.copy()
+    for i in countries:
+        d1["Countries"].append(i.ToList())
+    buffs = GAME.PLAYER.prioritybuffs.copy()
+    for i in buffs:
+        d2["Buffs"].append(str(i))
+    CONN.SendToPlayer("BATTLE", enemy.key, d1)
+    CONN.SendToPlayer("BATTLE", enemy.key, d2)
+    CONN.SendToPlayer("BATTLE", enemy.key, d3)
     data = CONN.Receive()
     while data["Command"] != "BATTLE": #Expects Dict containing key "EnemyCountries"
         for event in pygame.event.get():
@@ -2966,20 +2992,13 @@ def Play():
         data3 = CONN.Receive()
     battle3 = data3["Args"][0]
     print(battle3)
-    received = False
-    while not received:
-        try:
-            key = CONN.SOCK.recv(2048)
-            received = True
-        except:
-            pass
-    enemyCountries = battle["EnemyCountries"]
-    enemyBuffs = battle2["EnemyBuffs"]
+    enemyCountries = battle["Countries"]
+    enemyBuffs = battle2["Buffs"]
     enemyCountryObjects = []
     enemyBuffObjects = []
     playerCountries = GAME.PLAYER.prioritycountries.copy()
     playerBuffs = GAME.PLAYER.prioritybuffs.copy()
-    enemy = battle3["Enemy"]
+    enemy = battle3["Player"]
     for country in enemyCountries:
         if country[2] == "AGG":
             c = EnemyAggressiveCountry(country[3], country[1], country[0])
@@ -2990,7 +3009,6 @@ def Play():
         enemyCountryObjects.append(c)
     for buff in enemyBuffs:
         enemyBuffObjects.append(eval(buff + "Buff(False)"))
-    enemy = Player(enemy[0], countries=enemyCountryObjects, buffs=enemyBuffObjects, wins=enemy[1], losses=enemy[2], elo=enemy[3], ip=enemy[4], key=key)
     battle = Battle(GAME.PLAYER, playerCountries, playerBuffs, enemy, enemyCountryObjects, enemyBuffObjects, battle3["First"])
     t.quit()
     t.join()

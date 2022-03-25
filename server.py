@@ -266,10 +266,6 @@ class Battle:
         self.player1.Battle = True
         self.player2.Battle = True
         self.player1first = bool(random.randint(0, 1))
-        self.player1countries = player1.prioritycountries.copy()
-        self.player2countries = player2.prioritycountries.copy()
-        self.player1buffs = player1.prioritybuffs.copy()
-        self.player2buffs = player2.prioritybuffs.copy()
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #Socket specifying using the tcp/ip protocol
         self.__host = socket.gethostbyname(socket.gethostname()) #Server ip address
         self.__port = 11035 #Server port
@@ -292,33 +288,8 @@ class Battle:
                 self.p2socket = player
                 p2connected = True
                 print(f"{player2} connected")
-
-        player1d1 = {"EnemyCountries": []} 
-        player1d2 = {"EnemyBuffs": []} 
-        player1d3 = {"Enemy": [player1.username, player1.wins, player1.losses, player1.elo, self.player1.socket.getpeername()[0]], "First": not self.player1first}
-        for c in player1.prioritycountries:
-            player1d1["EnemyCountries"].append(c.ToList())
-        for b in player1.prioritybuffs:
-            player1d2["EnemyBuffs"].append(str(b))
-        SERVER.send("BATTLE", self.p2socket, self.player2.key, player1d1)
-        SERVER.send("BATTLE", self.p2socket, self.player2.key, player1d2)
-        SERVER.send("BATTLE", self.p2socket, self.player2.key, player1d3)
-        self.p2socket.send(self.player1.key.save_pkcs1("DER"))
-        print("sent to ", self.p2socket.getpeername())
-        
-        player2d1 = {"EnemyCountries": []} 
-        player2d2 = {"EnemyBuffs": []} 
-        player2d3 = {"Enemy": [player2.username, player2.wins, player2.losses, player2.elo, self.player2.socket.getpeername()[0]], "First": self.player1first}
-        for c in player2.prioritycountries:
-            player2d1["EnemyCountries"].append(c.ToList())
-        for b in player2.prioritybuffs:
-            player2d2["EnemyBuffs"].append(str(b))
-        SERVER.send("BATTLE", self.p1socket, self.player1.key, player2d1)
-        SERVER.send("BATTLE", self.p1socket, self.player1.key, player2d2)
-        SERVER.send("BATTLE", self.p1socket, self.player1.key, player2d3)
-        self.p1socket.send(self.player2.key.save_pkcs1("DER"))
-        print("sent to ", self.p1socket.getpeername())
-
+        SERVER.send("IP", self.p1socket, self.player1.key, self.player2.socket.getpeername()[0], self.player1first)
+        SERVER.send("IP", self.p2socket, self.player2.key, self.player1.socket.getpeername()[0], not self.player1first)
         print(f"Battle between {player1.username} and {player2.username} initialised!")
                 
     def Run(self):
