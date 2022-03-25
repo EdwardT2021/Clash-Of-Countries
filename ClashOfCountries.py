@@ -1158,6 +1158,7 @@ class Connection:
                     connected = True
                 except Exception as e:
                     print(e)
+                    break
                 for event in GAME.getevent():
                     pass
             self.SOCK = newSock
@@ -1165,10 +1166,12 @@ class Connection:
             connected = False
             while not connected:
                 try:
+                    print(enemyIP)
                     self.battleEnemySock.connect((enemyIP, 11036))
                     connected = True
                 except Exception as e:
                     print(e)
+                    break
                 for event in pygame.event.get():
                     pass
             self.SOCK = self.battleEnemySock
