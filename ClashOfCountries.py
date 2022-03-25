@@ -1132,7 +1132,8 @@ class Connection:
             except Exception as e:
                 if s.errorTab[10060] in str(e):
                     continue
-                self.SetBattleSock()
+                else:
+                    self.SetBattleSock()
                 return
     
     def SetNormalMode(self):
@@ -1153,7 +1154,7 @@ class Connection:
             self.battleEnemySock.listen(1)
             while not connected:
                 try:
-                    newSock = self.battleEnemySock.accept()
+                    newSock = self.battleEnemySock.accept()[0]
                     connected = True
                 except Exception as e:
                     print(e)
