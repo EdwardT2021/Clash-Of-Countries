@@ -2977,7 +2977,7 @@ def Play():
         for event in GAME.getevent():
             pass
     enemy = Player(ip=setupdata["Args"][0], key=key)
-    CONN.SetBattlePlayerMode(setupdata["Args"][0])
+    CONN.SetBattlePlayerMode(setupdata["Args"][0], setupdata["Args"][1])
     d1 = {"Countries": []}
     d2 = {"Buffs": []}
     d3 = {"Player": [GAME.PLAYER.username, GAME.PLAYER.elo], "First": setupdata["Args"][1]}
