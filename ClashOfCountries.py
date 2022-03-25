@@ -1139,19 +1139,33 @@ class Connection:
         self.PORT = 11034
         self.SOCK = self.regularSock
     
-    def SetBattlePlayerMode(self, enemyIP: str):
+    def SetBattlePlayerMode(self, enemyIP: str, first: bool):
         self.battleEnemySock = s.socket(s.AF_INET, s.SOCK_STREAM)
         self.battleEnemySock.settimeout(1)
-        connected = False
-        while not connected:
-            try:
-                self.battleEnemySock.connect((enemyIP, 11036))
-                connected = True
-            except Exception as e:
-                print(e)
-            for event in pygame.event.get():
-                pass
-        self.SOCK = self.battleEnemySock
+        if first:
+            connected = False
+            self.battleEnemySock.bind((self.SOCK.getsockname()[0], 11036))
+            self.battleEnemySock.listen(1)
+            while not connected:
+                try:
+                    newSock = self.battleEnemySock.accept()
+                    connected = True
+                except:
+                    pass
+                for event in GAME.getevent():
+                    pass
+            self.SOCK = newSock
+        else:
+            connected = False
+            while not connected:
+                try:
+                    self.battleEnemySock.connect((enemyIP, 11036))
+                    connected = True
+                except Exception as e:
+                    print(e)
+                for event in pygame.event.get():
+                    pass
+            self.SOCK = self.battleEnemySock
     
     def SetBattleSock(self):
         self.PORT = 11035  
