@@ -1140,18 +1140,20 @@ class Connection:
         self.SOCK = self.regularSock
     
     def SetBattlePlayerMode(self, enemyIP: str):
+        self.PORT = 11036
         connected = False
         while not connected:
             try:
                 self.battleEnemySock.connect((enemyIP, self.PORT))
                 connected = True
-            except:
-                pass
+            except Exception as e:
+                print(e)
             for event in pygame.event.get():
                 pass
         self.SOCK = self.battleEnemySock
     
     def SetBattleSock(self):
+        self.PORT = 11035  
         self.battleEnemySock.close()
         self.SOCK = self.battleSock
     
