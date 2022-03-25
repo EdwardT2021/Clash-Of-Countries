@@ -2953,7 +2953,7 @@ def Play():
     t = Thread(target=LoadScreen, args=["Matchmaking..."])
     d1 = {"Countries": []}
     d2 = {"Buffs": []}
-    d3 = {"Player": [GAME.PLAYER.username, GAME.PLAYER.elo], "First": setupdata["Args"][1]}
+    d3 = {"Player": [GAME.PLAYER.username, GAME.PLAYER.elo], "First": None}
     countries = GAME.PLAYER.prioritycountries.copy()
     for i in countries:
         d1["Countries"].append(i.ToList())
@@ -2988,6 +2988,7 @@ def Play():
             pass
         for event in GAME.getevent():
             pass
+    d3["First"] = setupdata["Args"][1]
     enemy = Player(ip=setupdata["Args"][0], key=key)
     CONN.SetBattlePlayerMode(setupdata["Args"][0], setupdata["Args"][1])
     CONN.SendToPlayer("BATTLE", enemy.key, d1)
