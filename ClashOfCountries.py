@@ -1140,6 +1140,8 @@ class Connection:
         self.SOCK = self.regularSock
     
     def SetBattlePlayerMode(self, enemyIP: str):
+        self.battleEnemySock = s.socket(s.AF_INET, s.SOCK_STREAM)
+        self.battleEnemySock.settimeout(1)
         self.PORT = 11036
         connected = False
         while not connected:
