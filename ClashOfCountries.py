@@ -2950,8 +2950,17 @@ def GetPlayerInfo():
     GetPlayerInfo()
 
 def Play():
-    CONN.Send("MATCHMAKE")
     t = Thread(target=LoadScreen, args=["Matchmaking..."])
+    d1 = {"Countries": []}
+    d2 = {"Buffs": []}
+    d3 = {"Player": [GAME.PLAYER.username, GAME.PLAYER.elo], "First": setupdata["Args"][1]}
+    countries = GAME.PLAYER.prioritycountries.copy()
+    for i in countries:
+        d1["Countries"].append(i.ToList())
+    buffs = GAME.PLAYER.prioritybuffs.copy()
+    for i in buffs:
+        d2["Buffs"].append(str(i))
+    CONN.Send("MATCHMAKE")
     data = CONN.Receive()
     while data["Command"] != "MATCHMADE":
         for event in pygame.event.get():
@@ -2981,15 +2990,6 @@ def Play():
             pass
     enemy = Player(ip=setupdata["Args"][0], key=key)
     CONN.SetBattlePlayerMode(setupdata["Args"][0], setupdata["Args"][1])
-    d1 = {"Countries": []}
-    d2 = {"Buffs": []}
-    d3 = {"Player": [GAME.PLAYER.username, GAME.PLAYER.elo], "First": setupdata["Args"][1]}
-    countries = GAME.PLAYER.prioritycountries.copy()
-    for i in countries:
-        d1["Countries"].append(i.ToList())
-    buffs = GAME.PLAYER.prioritybuffs.copy()
-    for i in buffs:
-        d2["Buffs"].append(str(i))
     CONN.SendToPlayer("BATTLE", enemy.key, d1)
     CONN.SendToPlayer("BATTLE", enemy.key, d2)
     CONN.SendToPlayer("BATTLE", enemy.key, d3)
