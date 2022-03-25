@@ -1152,8 +1152,8 @@ class Connection:
                 try:
                     newSock = self.battleEnemySock.accept()
                     connected = True
-                except:
-                    pass
+                except Exception as e:
+                    print(e)
                 for event in GAME.getevent():
                     pass
             self.SOCK = newSock
