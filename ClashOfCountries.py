@@ -1120,12 +1120,11 @@ class Connection:
         #self.Send("ADDBUFF", a)
     
     def SetBattleMode(self):
-        self.PORT = 11035
         self.SOCK = self.battleSock
         connected = False
         while not connected:
             try:
-                self.SOCK.connect((self.HOST, self.PORT))
+                self.SOCK.connect((self.HOST, 11035))
                 connected = True
             except:
                 continue
@@ -1142,11 +1141,10 @@ class Connection:
     def SetBattlePlayerMode(self, enemyIP: str):
         self.battleEnemySock = s.socket(s.AF_INET, s.SOCK_STREAM)
         self.battleEnemySock.settimeout(1)
-        self.PORT = 11036
         connected = False
         while not connected:
             try:
-                self.battleEnemySock.connect((enemyIP, self.PORT))
+                self.battleEnemySock.connect((enemyIP, 11036))
                 connected = True
             except Exception as e:
                 print(e)
