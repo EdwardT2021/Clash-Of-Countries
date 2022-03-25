@@ -889,6 +889,9 @@ class Country(Card):
         self.SetDetails()
         self.ResetPosition()
     
+    def ToList(self) -> list:
+        return [self.name, self.towns, self.type, self.production]
+    
     def __hash__(self) -> str:
         "Creates a unique hash for the country"
         return Hash(f"{self.name}{self.production}{self.towns}{self.type}")
