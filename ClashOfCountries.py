@@ -1127,7 +1127,8 @@ class Connection:
                 self.SOCK.connect((self.HOST, 11035))
                 connected = True
             except:
-                continue
+                self.SetBattleSock()
+                return
     
     def SetNormalMode(self):
         try:
