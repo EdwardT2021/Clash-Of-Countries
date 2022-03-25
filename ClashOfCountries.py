@@ -1126,7 +1126,9 @@ class Connection:
             try:
                 self.SOCK.connect((self.HOST, 11035))
                 connected = True
-            except:
+            except Exception as e:
+                if s.errortab[10060] in str(e):
+                    continue
                 self.SetBattleSock()
                 return
     
