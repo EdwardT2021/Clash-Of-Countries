@@ -288,9 +288,11 @@ class Battle:
                 self.p2socket = player
                 p2connected = True
                 print(f"{player2} connected")
-                
+
         SERVER.send("IP", self.p1socket, self.player1.key, self.player2.socket.getpeername()[0], self.player1first)
+        self.p1socket.send(self.player2.key.save_pkcs1("DER"))
         SERVER.send("IP", self.p2socket, self.player2.key, self.player1.socket.getpeername()[0], not self.player1first)
+        self.p2socket.send(self.player1.key.save_pkcs1("DER"))
         print(f"Battle between {player1.username} and {player2.username} initialised!")
                 
     def Run(self):
