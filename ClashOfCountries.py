@@ -1066,11 +1066,12 @@ class Connection:
             return {"Command": None, "Args": None}
         try:
             data = rsa.decrypt(data, self.__PRIVATEKEY)
-        except:
+        except Exception as e:
+            print(e)
             return {"Command": None, "Args": None}
         asString = data.decode("utf-8")
         dictionary = json.loads(asString)
-        print(f"{dictionary} received")
+        print(f"{dictionary['Command']}", f"{dictionary['Args']} received")
         if dictionary["AUTH"] != AUTH:
             raise er.UnauthorisedMessageError
         return dictionary
