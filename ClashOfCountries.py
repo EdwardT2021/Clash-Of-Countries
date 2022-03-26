@@ -1043,14 +1043,14 @@ class Connection:
                 errorcount += 1
             if errorcount == 15:
                 raise er.InitialConnectionError
-        self.SOCK.send(self.__PUBLICKEY.save_pkcs1("DER"))
+        self.SOCK.send(self.__PUBLICKEY.save_pkcs1("PEM"))
         failed = True
         while failed:
             for event in GAME.getevent():
                 pass
             try:
                 data = self.regularSock.recv(2048)
-                self.__SERVERKEY = rsa.PublicKey.load_pkcs1(data, "DER")
+                self.__SERVERKEY = rsa.PublicKey.load_pkcs1(data, "PEM")
             except Exception as e:
                 print(e)
                 continue
@@ -1269,7 +1269,7 @@ class Game:
         self.smallBoldFont = pygame.font.Font(resource_path("fonts\\rexlia.otf"), 16)
         self.bigBoldFont = pygame.font.Font(resource_path("fonts\\rexlia.otf"), 40)
         self.clock = pygame.time.Clock()
-        self.PLAYER = Player(username="PLACEHOLDER", elo="1000")
+        self.PLAYER = Player(username="PLACEHOLPEM", elo="1000")
         background = pygame.image.load(resource_path("art\\battle.png")).convert_alpha()
         self.background = pygame.transform.scale(background, (1080, 720))
         self.titlescreen = pygame.image.load(resource_path("art\\titlescreen.png")).convert_alpha()
@@ -2997,7 +2997,7 @@ def Play():
         for event in GAME.getevent():
             pass
     try:
-        key = rsa.PublicKey.load_pkcs1(key, "DER")
+        key = rsa.PublicKey.load_pkcs1(key, "PEM")
     except Exception as e:
         print(e)
     d3["First"] = setupdata["Args"][1]

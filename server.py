@@ -290,9 +290,9 @@ class Battle:
                 print(f"{player2} connected")
 
         SERVER.send("IP", self.p1socket, self.player1.key, self.player2.socket.getpeername()[0], self.player1first)
-        self.p1socket.send(self.player2.key.save_pkcs1("DER"))
+        self.p1socket.send(self.player2.key.save_pkcs1("PEM"))
         SERVER.send("IP", self.p2socket, self.player2.key, self.player1.socket.getpeername()[0], not self.player1first)
-        self.p2socket.send(self.player1.key.save_pkcs1("DER"))
+        self.p2socket.send(self.player1.key.save_pkcs1("PEM"))
         print(f"Battle between {player1.username} and {player2.username} initialised!")
                 
     def Run(self):
@@ -447,11 +447,11 @@ class Server: #Class containing server methods and attributes
             while failed:
                 try:
                     data = client.recv(4096)
-                    servkey = self.__pubkey.save_pkcs1("DER")
+                    servkey = self.__pubkey.save_pkcs1("PEM")
                     client.send(servkey)
                 except:
                     continue
-                key = rsa.PublicKey.load_pkcs1(data, "DER")
+                key = rsa.PublicKey.load_pkcs1(data, "PEM")
                 failed = False
             failed = True
             while failed:
