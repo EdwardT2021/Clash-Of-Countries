@@ -1161,7 +1161,6 @@ class Connection:
                     connected = True
                 except Exception as e:
                     print(e)
-                    break
                 for event in GAME.getevent():
                     pass
             self.SOCK = self.newSock
