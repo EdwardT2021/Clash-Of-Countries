@@ -1064,7 +1064,10 @@ class Connection:
             data = self.SOCK.recv(2048)
         except:
             return {"Command": None, "Args": None}
-        data = rsa.decrypt(data, self.__PRIVATEKEY)
+        try:
+            data = rsa.decrypt(data, self.__PRIVATEKEY)
+        except:
+            return {"Command": None, "Args": None}
         asString = data.decode("utf-8")
         dictionary = json.loads(asString)
         print(f"{dictionary} received")
