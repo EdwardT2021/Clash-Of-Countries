@@ -1211,6 +1211,8 @@ class Player:
         self.prioritycountries = [] #type: list[Country]
         self.prioritybuffs = [] #type: list[Buff]
         self.key = key #type: rsa.PublicKey
+        if isinstance(self.key, rsa.PublicKey):
+            print("key: ", self.key._save_pkcs1_der())
     
     def Text(self) -> str:
         "Returns a string in the form USERNAME - Elo: ELO"
