@@ -3003,6 +3003,7 @@ def Play():
     CONN.SetBattlePlayerMode(setupdata["Args"][0], setupdata["Args"][1])
     if d3["First"]:
         CONN.SendToPlayer("BATTLE", enemy.key, d1)
+        print(d2)
         CONN.SendToPlayer("BATTLE", enemy.key, d2)
         CONN.SendToPlayer("BATTLE", enemy.key, d3)
     data = CONN.Receive()
