@@ -2965,7 +2965,7 @@ def Play():
         d1.append(i.ToList())
     buffs = GAME.PLAYER.prioritybuffs.copy()
     for i in buffs:
-        d2["Buffs"].append(str(i))
+        d2.append(str(i))
     CONN.Send("MATCHMAKE")
     data = CONN.Receive()
     while data["Command"] != "MATCHMADE":
