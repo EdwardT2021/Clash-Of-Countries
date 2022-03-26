@@ -1085,7 +1085,7 @@ class Connection:
             d["Args"] = args
         message = json.dumps(d)
         self.SOCK.send(rsa.encrypt(message.encode("utf-8"), self.__SERVERKEY))
-        print(message, "sent to", self.SOCK.getpeername())
+        print(d["Command"], d["Args"], "sent to", self.SOCK.getpeername())
     
 
     def Login(self) -> bool:
