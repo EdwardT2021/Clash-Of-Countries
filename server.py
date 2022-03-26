@@ -401,7 +401,7 @@ class Server: #Class containing server methods and attributes
         print(f"Server Live at {self.__host, self.__port}")
 
     def send(self, command: str, conn: socket.socket, key: rsa.PublicKey, *args): #Sends a message through a socket
-        message = {"AUTH": AUTH, "Command": command} #Creates dictionary containing the command and any arguments
+        message = {"AUTH": AUTH, "Command": command, "Args": ()} #Creates dictionary containing the command and any arguments
         if args:
             message["Args"] = args
         print("sent", message)
