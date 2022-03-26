@@ -2957,12 +2957,12 @@ def GetPlayerInfo():
 
 def Play():
     t = Thread(target=LoadScreen, args=["Matchmaking..."])
-    d1 = {"Countries": []}
-    d2 = {"Buffs": []}
+    d1 = []
+    d2 = []
     d3 = {"Player": [GAME.PLAYER.username, GAME.PLAYER.elo], "First": None}
     countries = GAME.PLAYER.prioritycountries.copy()
     for i in countries:
-        d1["Countries"].append(i.ToList())
+        d1.append(i.ToList())
     buffs = GAME.PLAYER.prioritybuffs.copy()
     for i in buffs:
         d2["Buffs"].append(str(i))
@@ -3003,7 +3003,6 @@ def Play():
     CONN.SetBattlePlayerMode(setupdata["Args"][0], setupdata["Args"][1])
     if d3["First"]:
         CONN.SendToPlayer("BATTLE", enemy.key, d1)
-        print(d2)
         CONN.SendToPlayer("BATTLE", enemy.key, d2)
         CONN.SendToPlayer("BATTLE", enemy.key, d3)
     data = CONN.Receive()
@@ -3031,8 +3030,8 @@ def Play():
         CONN.SendToPlayer("BATTLE", enemy.key, d1)
         CONN.SendToPlayer("BATTLE", enemy.key, d2)
         CONN.SendToPlayer("BATTLE", enemy.key, d3) 
-    enemyCountries = battle["Countries"]
-    enemyBuffs = battle2["Buffs"]
+    enemyCountries = battle
+    enemyBuffs = battle2
     enemyCountryObjects = []
     enemyBuffObjects = []
     playerCountries = GAME.PLAYER.prioritycountries.copy()
