@@ -1,6 +1,6 @@
 import socket as s
 import random as r
-import clientErrors as e
+import clientErrors as er
 import pygame
 from os import path
 import sys
@@ -1042,7 +1042,7 @@ class Connection:
                 print(e)
                 errorcount += 1
             if errorcount == 15:
-                raise e.InitialConnectionError
+                raise er.InitialConnectionError
         self.SOCK.send(self.__PUBLICKEY.save_pkcs1("DER"))
         failed = True
         while failed:
@@ -1069,7 +1069,7 @@ class Connection:
         dictionary = json.loads(asString)
         print(f"{dictionary} received")
         if dictionary["AUTH"] != AUTH:
-            raise e.UnauthorisedMessageError
+            raise er.UnauthorisedMessageError
         return dictionary
 
 
@@ -1154,14 +1154,14 @@ class Connection:
             self.battleEnemySock.listen(1)
             while not connected:
                 try:
-                    newSock = self.battleEnemySock.accept()[0]
+                    self.newSock = self.battleEnemySock.accept()[0]
                     connected = True
                 except Exception as e:
                     print(e)
                     break
                 for event in GAME.getevent():
                     pass
-            self.SOCK = newSock
+            self.SOCK = self.newSock
         else:
             connected = False
             while not connected:
@@ -2403,7 +2403,7 @@ class AttackTracker:
         try:
             self.CurrentTurnAttacks.Add((attacker, defender))
             return True
-        except e.ActionNotUniqueError:
+        except er.ActionNotUniqueError:
             return False
         
     def NewTurn(self, enemyAttacks: list, playerFirst: bool):
@@ -2436,7 +2436,7 @@ class HashTable(): #Hash table using chaining
         index = hash(item[0]) % self.size
         success = self.values[index].AddItem((item[0], item[1]))
         if not success:
-            raise e.ActionNotUniqueError
+            raise er.ActionNotUniqueError
     
     def Search(self, item: Country):
         index = hash(item) % self.size
