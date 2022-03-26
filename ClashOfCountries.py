@@ -1207,8 +1207,7 @@ class Player:
         self.ip = ip
         self.prioritycountries = [] #type: list[Country]
         self.prioritybuffs = [] #type: list[Buff]
-        if key != "":
-            self.key = rsa.PublicKey.load_pkcs1(key, "DER")
+        self.key = key #type: rsa.PublicKey
     
     def Text(self) -> str:
         "Returns a string in the form USERNAME - Elo: ELO"
@@ -2992,6 +2991,10 @@ def Play():
             pass
         for event in GAME.getevent():
             pass
+    try:
+        key = rsa.PublicKey.load_pkcs1(key, "DER")
+    except Exception as e:
+        print(e)
     d3["First"] = setupdata["Args"][1]
     enemy = Player(ip=setupdata["Args"][0], key=key)
     CONN.SetBattlePlayerMode(setupdata["Args"][0], setupdata["Args"][1])
