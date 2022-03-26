@@ -2995,9 +2995,10 @@ def Play():
     d3["First"] = setupdata["Args"][1]
     enemy = Player(ip=setupdata["Args"][0], key=key)
     CONN.SetBattlePlayerMode(setupdata["Args"][0], setupdata["Args"][1])
-    CONN.SendToPlayer("BATTLE", enemy.key, d1)
-    CONN.SendToPlayer("BATTLE", enemy.key, d2)
-    CONN.SendToPlayer("BATTLE", enemy.key, d3)
+    if d3["First"]:
+        CONN.SendToPlayer("BATTLE", enemy.key, d1)
+        CONN.SendToPlayer("BATTLE", enemy.key, d2)
+        CONN.SendToPlayer("BATTLE", enemy.key, d3)
     data = CONN.Receive()
     while data["Command"] != "BATTLE": #Expects Dict containing key "EnemyCountries"
         for event in pygame.event.get():
@@ -3019,6 +3020,10 @@ def Play():
         data3 = CONN.Receive()
     battle3 = data3["Args"][0]
     print(battle3)
+    if not d3["First"]:
+        CONN.SendToPlayer("BATTLE", enemy.key, d1)
+        CONN.SendToPlayer("BATTLE", enemy.key, d2)
+        CONN.SendToPlayer("BATTLE", enemy.key, d3) 
     enemyCountries = battle["Countries"]
     enemyBuffs = battle2["Buffs"]
     enemyCountryObjects = []
