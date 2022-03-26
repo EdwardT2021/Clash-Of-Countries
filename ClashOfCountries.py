@@ -1036,7 +1036,7 @@ class Connection:
             for event in GAME.getevent():
                 pass
             try:
-                self.SOCK.connect((self.HOST, self.PORT))
+                self.regularSock.connect((self.HOST, self.PORT))
                 failed = False
             except Exception as e:
                 print(e)
@@ -1049,7 +1049,7 @@ class Connection:
             for event in GAME.getevent():
                 pass
             try:
-                data = self.SOCK.recv(2048)
+                data = self.regularSock.recv(2048)
                 self.__SERVERKEY = rsa.PublicKey.load_pkcs1(data, "DER")
             except Exception as e:
                 print(e)
