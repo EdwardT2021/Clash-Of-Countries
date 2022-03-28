@@ -1629,35 +1629,39 @@ class Battle:
             self.enemyBuffs[i].UpdatePosition(pos)
 
     def ReceiveEnemyActions(self) -> list:
-        CONN.SendToPlayer("READY", self.enemy.key)
+        CONN.SendToPlayer("READYTORECEIVE", self.enemy.key)
         data = CONN.Receive()
         while data["Command"] != "CHANGES":
             for event in GAME.getevent():
                 pass
             data = CONN.Receive()
+        print("received 1")
         CONN.SendToPlayer("RECEIVED", self.enemy.key)
         data2 = CONN.Receive()
         while data2["Command"] != "CHANGES":
             for event in GAME.getevent():
                 pass
             data2 = CONN.Receive()
+        print("received 2")
         CONN.SendToPlayer("RECEIVED", self.enemy.key)
         temp = [data, data2]
         return temp
 
     def SendPlayerActions(self):
         data = CONN.Receive()
-        while data["Command"] != "READY":
+        while data["Command"] != "READYTORECEIVE":
             for event in GAME.getevent():
                 pass
             data = CONN.Receive()
         CONN.SendToPlayer("CHANGES", self.enemy.key, self.PlayerActions[0])
+        print("sent 1")
         data = CONN.Receive()
         while data["Command"] != "RECEIVED":
             for event in GAME.getevent():
                 pass
             data = CONN.Receive()
         CONN.SendToPlayer("CHANGES", self.enemy.key, self.PlayerActions[1])
+        print("sent 2")
         data = CONN.Receive()
         while data["Command"] != "RECEIVED":
             for event in GAME.getevent():
