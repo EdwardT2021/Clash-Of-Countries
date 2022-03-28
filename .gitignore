@@ -1,3 +1,4 @@
 COC.save
 __pycache__
 .vscode/settings.json
+__pycache__/clientErrors.cpython-310.pyc
