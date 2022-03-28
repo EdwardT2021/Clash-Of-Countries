@@ -307,21 +307,21 @@ class Battle:
         while run:
             if not p1received:
                 try:
-                    print("reachedp1")
-                    p1finished = SERVER.receive(self.p1socket)[1]
-                    SERVER.send("SUCCESS", self.p1socket, self.player1.key)
-                    print("sent success to p1")
+                    p1finished = SERVER.receive(self.p1socket)
                     p1received = True
+                    if p1finished[0] == "RESIGN":
+                        p1finished = "LOSE"
+                        p2finished = "WIN"
                 except Exception as e:
                     print(e)
                     pass
             if not p2received:
                 try:
-                    print("reachedp2")
-                    p2finished = SERVER.receive(self.p2socket)[1]
-                    SERVER.send("SUCCESS", self.p2socket, self.player2.key)
-                    print("sent success to p2")
+                    p2finished = SERVER.receive(self.p2socket)
                     p2received = True
+                    if p2finished[0] == "RESIGN":
+                        p2finished = "LOSE"
+                        p1finished = "WIN"
                 except:
                     pass
                 

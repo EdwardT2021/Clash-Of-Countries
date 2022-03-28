@@ -1533,6 +1533,7 @@ class Battle:
         self.playerFirst = playerFirst
         self.playerCountries = playerCountries
         self.playerBuffs = playerBuffs
+        self.enemy = enemy
         self.enemyCountries = enemyCountries
         self.enemyBuffs = enemyBuffs
         self.countries = self.playerCountries + self.enemyCountries #type: list[Country]
@@ -1592,6 +1593,8 @@ class Battle:
             for event in GAME.getevent():                       #Gets user input events, iterates through them
                 if event.type == pygame.QUIT: 
                     GAME.SFXPlayer.play(GAME.ClickSound)           #If cross in corner pressed, stop running this game loop
+                    if not isinstance(self, TutorialBattle):
+                        CONN.Send("RESIGN")
                     self.run = False                               #This will return you to the Main Menu
                 elif event.type == pygame.MOUSEBUTTONDOWN:         #Checks for clicks
                     if event.button == 1:                          #If left click
@@ -1630,7 +1633,12 @@ class Battle:
         for i in range(2):
             self.PlayerActions[i][2] = hash(self.playerCountries[i].Buff)
             self.PlayerActions[i][1] = self.playerCountries[i].UnitsBought
-        CONN.Send("CHANGES", self.PlayerActions)
+        CONN.SendToPlayer("READY", self.enemy.key)
+        data = CONN.Receive()
+        while data["Command"] != "READY":
+            for event in GAME.getevent():
+                pass
+        CONN.SendToPlayer("CHANGES", self.enemy.key, self.PlayerActions[0])
         self.PlayerActions = [[[hash(self.countries[0]), None], {}, None], [[hash(self.countries[1]), None], {}, None]]
         t = Thread(target=LoadScreen, args=["Waiting for enemy..."])
         data = CONN.Receive()
