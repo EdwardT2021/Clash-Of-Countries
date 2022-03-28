@@ -1629,6 +1629,7 @@ class Battle:
             self.enemyBuffs[i].UpdatePosition(pos)
 
     def ReceiveEnemyActions(self) -> list:
+        CONN.SendToPlayer("READY", self.enemy.key)
         data = CONN.Receive()
         while data["Command"] != "CHANGES":
             for event in GAME.getevent():
@@ -1682,7 +1683,6 @@ class Battle:
             return
         if self.playerFirst:
             self.SendPlayerActions()
-            CONN.SendToPlayer("READY", self.enemy.key)
             data = self.ReceiveEnemyActions()
         else:
             data = self.ReceiveEnemyActions()
