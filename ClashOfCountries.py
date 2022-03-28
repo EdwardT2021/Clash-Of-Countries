@@ -1670,6 +1670,7 @@ class Battle:
         while data["Command"] != "READY" and data["Command"] != "RESIGN":
             for event in GAME.getevent():
                 pass
+            data = CONN.Receive()
         if data["Command"] == "RESIGN":
             t.quit()
             t.join()
