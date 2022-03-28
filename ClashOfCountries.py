@@ -1062,7 +1062,6 @@ class Connection:
         "Receive a decoded dictionary containing necessary arguments"
         try:
             data = self.SOCK.recv(2048)
-            print(data)
         except:
             return {"Command": None, "Args": None}
         try:
@@ -1193,9 +1192,8 @@ class Connection:
             d["Args"] = args
         message = json.dumps(d)
         data = rsa.encrypt(message.encode("utf-8"), key)
-        print(data)
         self.SOCK.send(data)
-        print(message, "sent to", self.SOCK.getpeername())
+        print(d["Command"], d["Args"], "sent to", self.SOCK.getpeername())
 
 ##################################################################################
 
@@ -3084,7 +3082,7 @@ def Play():
             c = EnemyDefensiveCountry(country[3], country[1], country[0])
         enemyCountryObjects.append(c)
     for buff in enemyBuffs:
-        enemyBuffObjects.append(eval(buff + "Buff(False)"))
+        enemyBuffObjects.append(eval(buff + "(False)"))
     battle = Battle(GAME.PLAYER, playerCountries, playerBuffs, enemy, enemyCountryObjects, enemyBuffObjects, battle3["First"])
     t.quit()
     t.join()
