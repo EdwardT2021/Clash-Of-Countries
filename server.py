@@ -369,9 +369,7 @@ class Server: #Class containing server methods and attributes
 
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #Socket specifying using the tcp/ip protocol
         self.__socket.settimeout(1)
-        temp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        temp.connect(("8.8.8.8", 80))
-        self.__host = temp.getsockname()[0] #Server ip address
+        self.__host = "192.168.248" #Server ip address
         self.__port = 11034 #Server port
         self.__pubkey, self.__privkey = rsa.newkeys(2048)
         self.__CountryNames = [] #type: list[str]
