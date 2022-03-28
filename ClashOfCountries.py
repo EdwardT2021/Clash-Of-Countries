@@ -3008,8 +3008,23 @@ def Play():
     CONN.SetBattlePlayerMode(setupdata["Args"][0], setupdata["Args"][1])
     if d3["First"]:
         CONN.SendToPlayer("BATTLE", enemy.key, d1)
+        data = CONN.Receive()
+        while data["Command"] != "RECEIVED":
+            for event in GAME.getevent():
+                pass
+            data = CONN.Receive()
         CONN.SendToPlayer("BATTLE", enemy.key, d2)
+        data = CONN.Receive()
+        while data["Command"] != "RECEIVED":
+            for event in GAME.getevent():
+                pass
+            data = CONN.Receive()
         CONN.SendToPlayer("BATTLE", enemy.key, d3)
+        data = CONN.Receive()
+        while data["Command"] != "RECEIVED":
+            for event in GAME.getevent():
+                pass
+            data = CONN.Receive()
     data = CONN.Receive()
     while data["Command"] != "BATTLE": #Expects Dict containing key "EnemyCountries"
         for event in pygame.event.get():
@@ -3017,6 +3032,7 @@ def Play():
         data = CONN.Receive()
     battle = data["Args"][0]
     print(battle)
+    CONN.SendToPlayer("RECEIVED", enemy.key)
     data2 = CONN.Receive() 
     while data2["Command"] != "BATTLE": #Expects Dict containing key "EnemyBuffs"
         for event in pygame.event.get():
@@ -3024,6 +3040,7 @@ def Play():
         data2 = CONN.Receive()
     battle2 = data2["Args"][0]
     print(battle2)
+    CONN.SendToPlayer("RECEIVED", enemy.key)
     data3 = CONN.Receive() 
     while data3["Command"] != "BATTLE": #Expects Dict containing key "EnemyBuffs"
         for event in pygame.event.get():
@@ -3031,10 +3048,26 @@ def Play():
         data3 = CONN.Receive()
     battle3 = data3["Args"][0]
     print(battle3)
+    CONN.SendToPlayer("RECEIVED", enemy.key)
     if not d3["First"]:
         CONN.SendToPlayer("BATTLE", enemy.key, d1)
+        data = CONN.Receive()
+        while data["Command"] != "RECEIVED":
+            for event in GAME.getevent():
+                pass
+            data = CONN.Receive()
         CONN.SendToPlayer("BATTLE", enemy.key, d2)
-        CONN.SendToPlayer("BATTLE", enemy.key, d3) 
+        data = CONN.Receive()
+        while data["Command"] != "RECEIVED":
+            for event in GAME.getevent():
+                pass
+            data = CONN.Receive()
+        CONN.SendToPlayer("BATTLE", enemy.key, d3)
+        data = CONN.Receive()
+        while data["Command"] != "RECEIVED":
+            for event in GAME.getevent():
+                pass
+            data = CONN.Receive()
     enemyCountries = battle
     enemyBuffs = battle2
     enemyCountryObjects = []
