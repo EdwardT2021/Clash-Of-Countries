@@ -1269,7 +1269,7 @@ class Game:
         self.smallBoldFont = pygame.font.Font(resource_path("fonts/rexlia.otf"), 16)
         self.bigBoldFont = pygame.font.Font(resource_path("fonts/rexlia.otf"), 40)
         self.clock = pygame.time.Clock()
-        self.PLAYER = Player(username="PLACEHOLPEM", elo="1000")
+        self.PLAYER = Player(username="PLACEHOLDER", elo="1000")
         background = pygame.image.load(resource_path("art/battle.png")).convert_alpha()
         self.background = pygame.transform.scale(background, (1080, 720))
         self.titlescreen = pygame.image.load(resource_path("art/titlescreen.png")).convert_alpha()
