@@ -744,7 +744,7 @@ class Country(Card):
         self.prodpower = self.factories * self.production
         self.prodpowerbuffadded = False
         #The below line is only used for passing data when in a battle across networks
-        self.UnitsBought = {"Infantry": 0, "Tank": 0, "Plane": 0, "Fortification": 0, "Defense Artillery": 0, "Attack Artillery": 0}
+        self.UnitsBought = [0, 0, 0, 0, 0, 0]
         self.dead = False
         self.deathImage = pygame.image.load(resource_path("art/Death.png")).convert_alpha() 
         self.deathImage = pygame.transform.scale(self.deathImage, self.cardSize)
@@ -847,32 +847,32 @@ class Country(Card):
             if self.prodpower >= 75:
                 self.army.AddInfantry(1)
                 self.prodpower -= 75
-                self.UnitsBought[unit] += 1
+                self.UnitsBought[0] += 1
         elif unit == "Tank":
             if self.prodpower >= 150:
                 self.army.AddTanks(1)
                 self.prodpower -= 150
-                self.UnitsBought[unit] += 1
+                self.UnitsBought[1] += 1
         elif unit == "Plane":
             if self.prodpower >= 150:
                 self.army.AddPlanes(1)
                 self.prodpower -= 150
-                self.UnitsBought[unit] += 1
+                self.UnitsBought[2] += 1
         elif unit == "Defense Artillery":
             if self.prodpower >= 100:
                 self.army.AddDefenseArtillery(1)
                 self.prodpower -= 100
-                self.UnitsBought[unit] += 1
+                self.UnitsBought[3] += 1
         elif unit == "Attack Artillery":
             if self.prodpower >= 100:
                 self.army.AddAttackArtillery(1)
                 self.prodpower -= 100
-                self.UnitsBought[unit] += 1
+                self.UnitsBought[4] += 1
         elif unit == "Fortification":
             if self.prodpower >= 300:
                 self.fortifications += 1
                 self.prodpower -= 300
-                self.UnitsBought[unit] += 1
+                self.UnitsBought[5] += 1
         #Reset card details
         self.SetDetails()
     
@@ -2214,12 +2214,12 @@ class StageManager:
             card = self._EnemyCountries[i]
             if card.dead:
                 continue
-            card.army.AddInfantry(actions[1]["Infantry"])
-            card.army.AddTanks(actions[1]["Tank"])
-            card.army.AddPlanes(actions[1]["Plane"])
-            card.army.AddDefenseArtillery(actions[1]["Defense Artillery"])
-            card.army.AddAttackArtillery(actions[1]["Attack Artillery"])
-            card.fortifications += actions[1]["Fortification"]
+            card.army.AddInfantry(actions[1][0])
+            card.army.AddTanks(actions[1][1])
+            card.army.AddPlanes(actions[1][2])
+            card.army.AddDefenseArtillery(actions[1][3])
+            card.army.AddAttackArtillery(actions[1][4])
+            card.fortifications += actions[1][5]
             if actions[2] != None:
                 card.AddBuff(actions[2])
             if actions[0][1] is not None:
