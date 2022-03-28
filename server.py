@@ -348,7 +348,7 @@ class Battle:
         SERVER.getReward(winsock, winner)
         if random.random() >= 0.3:
             SERVER.getReward(losesock, loser)
-        else:
+        else:  
             SERVER.send("REWARD", losesock, loser.key, "NONE")
         winner.Battle = None
         loser.Battle = None
