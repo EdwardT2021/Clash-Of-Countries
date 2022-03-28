@@ -324,7 +324,7 @@ class Battle:
                 except:
                     pass
                 
-            if p1received or p2received:
+            if not (p1received or p2received):
                 continue
             
             if p1finished == "WIN" or p2finished == "LOSE":
