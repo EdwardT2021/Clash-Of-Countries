@@ -1593,6 +1593,7 @@ class Battle:
             for event in GAME.getevent():                       #Gets user input events, iterates through them
                 if event.type == pygame.QUIT: 
                     GAME.SFXPlayer.play(GAME.ClickSound)           #If cross in corner pressed, stop running this game loop
+                    CONN.SendToPlayer("RESIGN", self.enemy.key)
                     self.BattleFinished(False)
                     self.run = False                               #This will return you to the Main Menu
                 elif event.type == pygame.MOUSEBUTTONDOWN:         #Checks for clicks
@@ -1627,6 +1628,37 @@ class Battle:
             pos = (GAME.SCREENWIDTH-130, 220+270*i)
             self.enemyBuffs[i].UpdatePosition(pos)
 
+    def ReceiveEnemyActions(self) -> list:
+        data = CONN.Receive()
+        while data["Command"] != "CHANGES":
+            for event in GAME.getevent():
+                pass
+            data = CONN.Receive()
+        CONN.SendToPlayer("RECEIVED", self.enemy.key)
+        data2 = CONN.Receive()
+        while data2["Command"] != "CHANGES":
+            for event in GAME.getevent():
+                pass
+            data2 = CONN.Receive()
+        CONN.SendToPlayer("RECEIVED", self.enemy.key)
+        temp = [data, data2]
+        return temp
+
+    def SendPlayerActions(self):
+        CONN.SendToPlayer("CHANGES", self.enemy.key, self.PlayerActions[0])
+        data = CONN.Receive()
+        while data["Command"] != "RECEIVED":
+            for event in GAME.getevent():
+                pass
+            data = CONN.Receive()
+        CONN.SendToPlayer("CHANGES", self.enemy.key, self.PlayerActions[1])
+        data = CONN.Receive()
+        while data["Command"] != "RECEIVED":
+            for event in GAME.getevent():
+                pass
+            data = CONN.Receive()
+        CONN.SendToPlayer("READY", self.enemy.key)
+
     def GetEnemyActions(self) -> list:
         "Get the enemy players choices and send off your own"
         t = Thread(target=LoadScreen, args=["Waiting for enemy..."])
@@ -1643,21 +1675,20 @@ class Battle:
             t.join()
             self.BattleFinished(True)
             return
-        CONN.SendToPlayer("CHANGES", self.enemy.key, self.PlayerActions[0])
+        if self.playerFirst:
+            self.SendPlayerActions()
+            data = self.ReceiveEnemyActions()
+        else:
+            data = self.ReceiveEnemyActions()
+            self.SendPlayerActions()
         self.PlayerActions = [[[hash(self.countries[0]), None], {}, None], [[hash(self.countries[1]), None], {}, None]]
-        data = CONN.Receive()
-        while data["Command"] != "CHANGES":
-            for event in GAME.getevent():
-                pass
-            data = CONN.Receive()
         t.quit()
         t.join()
-        return data["Args"][0]
+        return data
 
     def BattleFinished(self, win: bool):
         t = Thread(target=LoadScreen, args=["Getting rewards..."])
         if not isinstance(self, TutorialBattle):
-            CONN.SendToPlayer("RESIGN", self.enemy.key)
             CONN.SetBattleSock()
         if win:
             msg = "WIN"
