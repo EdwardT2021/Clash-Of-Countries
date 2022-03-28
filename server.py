@@ -312,8 +312,7 @@ class Battle:
                     if p1finished[0] == "RESIGN":
                         p1finished = "LOSE"
                         p2finished = "WIN"
-                except Exception as e:
-                    print(e)
+                except:
                     pass
             if not p2received:
                 try:
@@ -325,10 +324,10 @@ class Battle:
                 except:
                     pass
                 
-            if not (p1received and p2received):
+            if p1received or p2received:
                 continue
             
-            if p1finished == "WIN" and p2finished == "LOSE":
+            if p1finished == "WIN" or p2finished == "LOSE":
                 winner = self.player1
                 winsock = self.p1socket
                 loser = self.player2
