@@ -1645,6 +1645,11 @@ class Battle:
         return temp
 
     def SendPlayerActions(self):
+        data = CONN.Receive()
+        while data["Command"] != "READY":
+            for event in GAME.getevent():
+                pass
+            data = CONN.Receive()
         CONN.SendToPlayer("CHANGES", self.enemy.key, self.PlayerActions[0])
         data = CONN.Receive()
         while data["Command"] != "RECEIVED":
@@ -1657,7 +1662,6 @@ class Battle:
             for event in GAME.getevent():
                 pass
             data = CONN.Receive()
-        CONN.SendToPlayer("READY", self.enemy.key)
 
     def GetEnemyActions(self) -> list:
         "Get the enemy players choices and send off your own"
@@ -1678,6 +1682,7 @@ class Battle:
             return
         if self.playerFirst:
             self.SendPlayerActions()
+            CONN.SendToPlayer("READY", self.enemy.key)
             data = self.ReceiveEnemyActions()
         else:
             data = self.ReceiveEnemyActions()
