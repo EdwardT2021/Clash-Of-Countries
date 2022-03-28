@@ -3029,7 +3029,6 @@ def Play():
             pass
         data = CONN.Receive()
     battle = data["Args"][0]
-    print(battle)
     CONN.SendToPlayer("RECEIVED", enemy.key)
     data2 = CONN.Receive() 
     while data2["Command"] != "BATTLE": #Expects Dict containing key "EnemyBuffs"
@@ -3037,7 +3036,6 @@ def Play():
             pass
         data2 = CONN.Receive()
     battle2 = data2["Args"][0]
-    print(battle2)
     CONN.SendToPlayer("RECEIVED", enemy.key)
     data3 = CONN.Receive() 
     while data3["Command"] != "BATTLE": #Expects Dict containing key "EnemyBuffs"
@@ -3045,7 +3043,6 @@ def Play():
             pass
         data3 = CONN.Receive()
     battle3 = data3["Args"][0]
-    print(battle3)
     CONN.SendToPlayer("RECEIVED", enemy.key)
     if not d3["First"]:
         CONN.SendToPlayer("BATTLE", enemy.key, d1)
@@ -3072,7 +3069,9 @@ def Play():
     enemyBuffObjects = []
     playerCountries = GAME.PLAYER.prioritycountries.copy()
     playerBuffs = GAME.PLAYER.prioritybuffs.copy()
-    enemy = battle3["Player"]
+    enemydata = battle3["Player"]
+    enemy.username = enemydata[0]
+    enemy.elo = enemydata[1]
     for country in enemyCountries:
         if country[2] == "AGG":
             c = EnemyAggressiveCountry(country[3], country[1], country[0])
