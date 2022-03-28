@@ -1062,6 +1062,7 @@ class Connection:
         "Receive a decoded dictionary containing necessary arguments"
         try:
             data = self.SOCK.recv(2048)
+            print(data)
         except:
             return {"Command": None, "Args": None}
         try:
@@ -1191,7 +1192,9 @@ class Connection:
         if args:
             d["Args"] = args
         message = json.dumps(d)
-        self.SOCK.send(rsa.encrypt(message.encode("utf-8"), key))
+        data = rsa.encrypt(message.encode("utf-8"), key)
+        print(data)
+        self.SOCK.send(data)
         print(message, "sent to", self.SOCK.getpeername())
 
 ##################################################################################
