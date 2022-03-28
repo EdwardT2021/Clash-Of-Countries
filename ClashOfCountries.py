@@ -64,12 +64,12 @@ class Card(pygame.sprite.Sprite):
         self.right = False
         self.cardSize = (150, 245.5)
         self.highlighted = False
-        self.highlightImage = pygame.image.load(resource_path("art\\Highlight.png")).convert_alpha() 
+        self.highlightImage = pygame.image.load(resource_path("art/Highlight.png")).convert_alpha() 
         self.highlightImage = pygame.transform.scale(self.highlightImage, self.cardSize)
         self.priority = False
-        priorityImage = pygame.image.load(resource_path("art\\priority.png")).convert_alpha()
+        priorityImage = pygame.image.load(resource_path("art/priority.png")).convert_alpha()
         self.priorityImage = pygame.transform.scale(priorityImage, self.cardSize)
-        cardBack = pygame.image.load(resource_path("art\\CardBack.png")).convert_alpha()
+        cardBack = pygame.image.load(resource_path("art/CardBack.png")).convert_alpha()
         self.cardBack = pygame.transform.scale(cardBack, self.cardSize)
         self.image = self.cardBack #The actual image that will be displayed
         self.flipping = False
@@ -548,7 +548,7 @@ class ProductionBuff(LinearBuff):
     def __init__(self, change: int, player: bool):
 
         super(ProductionBuff, self).__init__("Production", change, player)
-        card = pygame.image.load(resource_path("art\\ProductionBuff.png")).convert_alpha()
+        card = pygame.image.load(resource_path("art/ProductionBuff.png")).convert_alpha()
         card = pygame.transform.scale(card, self.cardSize)
         self.flippedImage = pygame.Surface(self.cardSize).convert_alpha()
         self.flippedImage.blit(card, (0, 0))
@@ -573,7 +573,7 @@ class TownsBuff(LinearBuff):
     def __init__(self, change: int, player: bool):
 
         super(TownsBuff, self).__init__("Towns", change, player)
-        card = pygame.image.load(resource_path("art\\TownBuff.png")).convert_alpha()
+        card = pygame.image.load(resource_path("art/TownBuff.png")).convert_alpha()
         card = pygame.transform.scale(card, self.cardSize)
         self.flippedImage = pygame.Surface(self.cardSize).convert_alpha()
         self.flippedImage.blit(card, (0, 0))
@@ -598,7 +598,7 @@ class FortificationBuff(LinearBuff):
     def __init__(self, change: int, player: bool):
 
         super(FortificationBuff, self).__init__("Fortifications", change, player)
-        card = pygame.image.load(resource_path("art\\FortificationBuff.png")).convert_alpha()
+        card = pygame.image.load(resource_path("art/FortificationBuff.png")).convert_alpha()
         card = pygame.transform.scale(card, self.cardSize)
         self.flippedImage = pygame.Surface(self.cardSize).convert_alpha()
         self.flippedImage.blit(card, (0, 0))
@@ -624,7 +624,7 @@ class AttackBuff(MultiplicativeBuff):
         
         super(AttackBuff, self).__init__("Attack", change, player)
 
-        card = pygame.image.load(resource_path("art\\AttackBuff.png")).convert_alpha()
+        card = pygame.image.load(resource_path("art/AttackBuff.png")).convert_alpha()
         card = pygame.transform.scale(card, self.cardSize)
         self.flippedImage = pygame.Surface(self.cardSize).convert_alpha()
         self.flippedImage.blit(card, (0, 0))
@@ -650,7 +650,7 @@ class SiegeAttackBuff(MultiplicativeBuff):
 
         super(SiegeAttackBuff, self).__init__("SiegeAttack", change, player)
 
-        card = pygame.image.load(resource_path("art\\SiegeAttackBuff.png")).convert_alpha()
+        card = pygame.image.load(resource_path("art/SiegeAttackBuff.png")).convert_alpha()
         card = pygame.transform.scale(card, self.cardSize)
         self.flippedImage = pygame.Surface(self.cardSize).convert_alpha()
         self.flippedImage.blit(card, (0, 0))
@@ -676,7 +676,7 @@ class DefenseBuff(MultiplicativeBuff):
         
         super(DefenseBuff, self).__init__("Defense", change, player)
 
-        card = pygame.image.load(resource_path("art\\DefenseBuff.png")).convert_alpha()
+        card = pygame.image.load(resource_path("art/DefenseBuff.png")).convert_alpha()
         card = pygame.transform.scale(card, self.cardSize)
         self.flippedImage = pygame.Surface(self.cardSize).convert_alpha()
         self.flippedImage.blit(card, (0, 0))
@@ -702,7 +702,7 @@ class SiegeDefenseBuff(MultiplicativeBuff):
 
         super(SiegeDefenseBuff, self).__init__("SiegeDefense", change, player)
 
-        card = pygame.image.load(resource_path("art\\SiegeDefenseBuff.png")).convert_alpha()
+        card = pygame.image.load(resource_path("art/SiegeDefenseBuff.png")).convert_alpha()
         card = pygame.transform.scale(card, self.cardSize)
         self.flippedImage = pygame.Surface(self.cardSize).convert_alpha()
         self.flippedImage.blit(card, (0, 0))
@@ -746,7 +746,7 @@ class Country(Card):
         #The below line is only used for passing data when in a battle across networks
         self.UnitsBought = {"Infantry": 0, "Tank": 0, "Plane": 0, "Fortification": 0, "Defense Artillery": 0, "Attack Artillery": 0}
         self.dead = False
-        self.deathImage = pygame.image.load(resource_path("art\\Death.png")).convert_alpha() 
+        self.deathImage = pygame.image.load(resource_path("art/Death.png")).convert_alpha() 
         self.deathImage = pygame.transform.scale(self.deathImage, self.cardSize)
         self.armyunits = None #type: pygame.Surface
 
@@ -935,7 +935,7 @@ class AggressiveCountry(Country):
             self.army = EnemyAggressiveArmy()
         self.fortifications = 3
         self.basefortifications = 3
-        card = pygame.image.load(resource_path("art\\AggressiveCountry.png")).convert_alpha()
+        card = pygame.image.load(resource_path("art/AggressiveCountry.png")).convert_alpha()
         card = pygame.transform.scale(card, self.cardSize)
         self.flippedImage = pygame.Surface(self.cardSize).convert_alpha()
         self.flippedImage.blit(card, (0, 0))
@@ -951,7 +951,7 @@ class BalancedCountry(Country):
             self.army = EnemyBalancedArmy()
         self.fortifications = 4
         self.basefortifications = 4
-        card = pygame.image.load(resource_path("art\\BalancedCountry.png")).convert_alpha()
+        card = pygame.image.load(resource_path("art/BalancedCountry.png")).convert_alpha()
         card = pygame.transform.scale(card, self.cardSize)
         self.flippedImage = pygame.Surface(self.cardSize).convert_alpha()
         self.flippedImage.blit(card, (0, 0))
@@ -967,7 +967,7 @@ class DefensiveCountry(Country):
             self.army = EnemyDefensiveArmy()
         self.fortifications = 5
         self.basefortifications = 5
-        card = pygame.image.load(resource_path("art\\DefensiveCountry.png")).convert_alpha()
+        card = pygame.image.load(resource_path("art/DefensiveCountry.png")).convert_alpha()
         card = pygame.transform.scale(card, self.cardSize)
         self.flippedImage = pygame.Surface(self.cardSize).convert_alpha()
         self.flippedImage.blit(card, (0, 0))
@@ -1263,16 +1263,16 @@ class Game:
         pygame.display.set_icon(pygame.image.load(resource_path("clashofcountries.ico")).convert_alpha())
         self.screen = pygame.Surface((self.SCREENWIDTH, self.SCREENHEIGHT)).convert_alpha()
         self.FPS = 65
-        self.boldFont = pygame.font.Font(resource_path("fonts\\rexlia.otf"), 24)
-        self.regularFont = pygame.font.Font(resource_path("fonts\\rexlia.otf"), 14)
-        self.tinyBoldFont = pygame.font.Font(resource_path("fonts\\rexlia.otf"), 11)
-        self.smallBoldFont = pygame.font.Font(resource_path("fonts\\rexlia.otf"), 16)
-        self.bigBoldFont = pygame.font.Font(resource_path("fonts\\rexlia.otf"), 40)
+        self.boldFont = pygame.font.Font(resource_path("fonts/rexlia.otf"), 24)
+        self.regularFont = pygame.font.Font(resource_path("fonts/rexlia.otf"), 14)
+        self.tinyBoldFont = pygame.font.Font(resource_path("fonts/rexlia.otf"), 11)
+        self.smallBoldFont = pygame.font.Font(resource_path("fonts/rexlia.otf"), 16)
+        self.bigBoldFont = pygame.font.Font(resource_path("fonts/rexlia.otf"), 40)
         self.clock = pygame.time.Clock()
         self.PLAYER = Player(username="PLACEHOLPEM", elo="1000")
-        background = pygame.image.load(resource_path("art\\battle.png")).convert_alpha()
+        background = pygame.image.load(resource_path("art/battle.png")).convert_alpha()
         self.background = pygame.transform.scale(background, (1080, 720))
-        self.titlescreen = pygame.image.load(resource_path("art\\titlescreen.png")).convert_alpha()
+        self.titlescreen = pygame.image.load(resource_path("art/titlescreen.png")).convert_alpha()
         self.shaking = False
         self.shakeMagnitude = 0
         self.shakeMagnitudeRange = 0
@@ -1282,11 +1282,11 @@ class Game:
         pygame.mixer.init()
         self.MusicPlayer = pygame.mixer.music
         self.SFXPlayer = pygame.mixer.Sound
-        self.ClickSound = pygame.mixer.Sound(resource_path("sfx\\click.ogg"))
+        self.ClickSound = pygame.mixer.Sound(resource_path("sfx/click.ogg"))
         self.BattleSound = []
         for i in range(1, 4):
-            self.BattleSound.append(pygame.mixer.Sound(resource_path(f"sfx\\shots{i}.ogg")))
-        self.MarchingSound = pygame.mixer.Sound(resource_path("sfx\\march.ogg"))
+            self.BattleSound.append(pygame.mixer.Sound(resource_path(f"sfx/shots{i}.ogg")))
+        self.MarchingSound = pygame.mixer.Sound(resource_path("sfx/march.ogg"))
     
     def LoadPlayer(self):
         t = Thread(LoadScreen, ["Loading Player Data..."])
@@ -1548,8 +1548,8 @@ class Battle:
         self.NextTurnButton = Button("Confirm Actions", BLACK, BLUE, ROYALBLUE, GAME.tinyBoldFont, 900, 55, 150, 30)
         self.AttackTracker = AttackTracker()
         self.StageManager = StageManager(enemyCountries, enemyBuffs, playerCountries, playerBuffs, self)
-        self.victoryScreen = pygame.image.load(resource_path("art\\Victory.png")).convert_alpha()
-        self.defeatScreen = pygame.image.load(resource_path("art\\Defeat.png")).convert_alpha()
+        self.victoryScreen = pygame.image.load(resource_path("art/Victory.png")).convert_alpha()
+        self.defeatScreen = pygame.image.load(resource_path("art/Defeat.png")).convert_alpha()
         self.run = False
         self.TutorialDialogue = False
         GAME.MusicPlayer.unload()
@@ -2002,7 +2002,7 @@ class StageManager:
                 self.NextStage()
         else:
             rect = pygame.Rect(GAME.SCREENWIDTH/2-125, GAME.SCREENHEIGHT/2-180, 250, 180)
-            with open(resource_path("txt\\t.txt"), "r") as f:
+            with open(resource_path("txt/t.txt"), "r") as f:
                 for line in f.readlines():
                     message = GameMessage(line.strip(), GAME.smallBoldFont, WHITE, rect, 310)
                     self._Battle.messageQueue.Add(message)
@@ -2277,7 +2277,7 @@ class GameBar:
     def __init__(self, player: Player, enemy: Player, playerfirst: bool):
         self.startTime = time()
         self.time = 0
-        image = pygame.image.load(resource_path("art\\GameBar.png")).convert_alpha()
+        image = pygame.image.load(resource_path("art/GameBar.png")).convert_alpha()
         self.flippedImage = pygame.Surface((1080, 50))
         self.flippedImage.blit(image, (0, 0))
         self.border = pygame.Rect(0, 0, 1080, 52)
@@ -2372,7 +2372,7 @@ class Dagger(pygame.sprite.Sprite):
         self.right = not self.left
         self.distancex = self.endX - self.startX
         self.distancey = self.endY - self.startY
-        image = pygame.image.load(resource_path("art\\gun.png")).convert_alpha()
+        image = pygame.image.load(resource_path("art/gun.png")).convert_alpha()
         self.image = pygame.transform.scale(image, (50, 50))
         if self.left:
             self.image = pygame.transform.flip(self.image, True, False)
