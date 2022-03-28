@@ -1642,7 +1642,7 @@ class Battle:
                 pass
             data2 = CONN.Receive()
         CONN.SendToPlayer("RECEIVED", self.enemy.key)
-        temp = [data, data2]
+        temp = [data[0], data2[0]]
         return temp
 
     def SendPlayerActions(self):
