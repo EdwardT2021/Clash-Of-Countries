@@ -1635,14 +1635,12 @@ class Battle:
             for event in GAME.getevent():
                 pass
             data = CONN.Receive()
-        print("received 1")
         CONN.SendToPlayer("RECEIVED", self.enemy.key)
         data2 = CONN.Receive()
         while data2["Command"] != "CHANGES":
             for event in GAME.getevent():
                 pass
             data2 = CONN.Receive()
-        print("received 2")
         CONN.SendToPlayer("RECEIVED", self.enemy.key)
         temp = [data, data2]
         return temp
@@ -1654,14 +1652,12 @@ class Battle:
                 pass
             data = CONN.Receive()
         CONN.SendToPlayer("CHANGES", self.enemy.key, self.PlayerActions[0])
-        print("sent 1")
         data = CONN.Receive()
         while data["Command"] != "RECEIVED":
             for event in GAME.getevent():
                 pass
             data = CONN.Receive()
         CONN.SendToPlayer("CHANGES", self.enemy.key, self.PlayerActions[1])
-        print("sent 2")
         data = CONN.Receive()
         while data["Command"] != "RECEIVED":
             for event in GAME.getevent():
@@ -1691,7 +1687,7 @@ class Battle:
         else:
             data = self.ReceiveEnemyActions()
             self.SendPlayerActions()
-        self.PlayerActions = [[[hash(self.countries[0]), None], {}, None], [[hash(self.countries[1]), None], {}, None]]
+        self.PlayerActions = [[[hash(self.countries[0]), None], [], None], [[hash(self.countries[1]), None], [], None]]
         t.quit()
         t.join()
         return data
