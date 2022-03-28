@@ -1291,7 +1291,7 @@ class Game:
     def LoadPlayer(self):
         t = Thread(LoadScreen, ["Loading Player Data..."])
         try:
-            with open(path.abspath(path.dirname(sys.argv[0])) + "\COC.save", "rb") as f:
+            with open(path.abspath(path.dirname(sys.argv[0])) + "/COC.save", "rb") as f:
                 self.PLAYER = pickle.load(f)
                 if not isinstance(self.PLAYER, Player):
                     raise TypeError
