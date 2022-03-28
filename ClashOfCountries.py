@@ -1325,7 +1325,7 @@ class Game:
     def Save(self):
         "Saves the player object to COC.save"
         t = Thread(LoadScreen, ["Saving Game..."])
-        with open(path.abspath(path.dirname(sys.argv[0])) + "\COC.save", "wb") as f:
+        with open(path.abspath(path.dirname(sys.argv[0])) + "/COC.save", "wb") as f:
             pickle.dump(self.PLAYER, f)
             f.close()
         t.quit()
@@ -1553,7 +1553,7 @@ class Battle:
         self.run = False
         self.TutorialDialogue = False
         GAME.MusicPlayer.unload()
-        GAME.MusicPlayer.load(resource_path("music\\Battle.ogg"))
+        GAME.MusicPlayer.load(resource_path("music/Battle.ogg"))
         self.PlayerActions = [[[hash(self.countries[0]), None], [], None], [[hash(self.countries[1]), None], [], None]]
     
     def Run(self):
@@ -2633,7 +2633,7 @@ def MainMenu():
     click = False
     run = True
     stage = "Moving"
-    GAME.MusicPlayer.load(resource_path("music\\Menu.ogg"))
+    GAME.MusicPlayer.load(resource_path("music/Menu.ogg"))
     GAME.MusicPlayer.play(-1)
     while run:
         GAME.screen.blit(GAME.titlescreen, (0,0))
@@ -2676,14 +2676,14 @@ def MainMenu():
                     elif button.string == "Tutorial": #Launches Tutorial
                         Tutorial()
                         GAME.MusicPlayer.unload()
-                        GAME.MusicPlayer.load(resource_path("music\\Menu.ogg"))
+                        GAME.MusicPlayer.load(resource_path("music/Menu.ogg"))
                         GAME.MusicPlayer.play(-1)
                     elif button.string == "Play": #Launches matchmaking
                         Play()
                     elif button.string == "Inventory":
                         Inventory()
                         GAME.MusicPlayer.unload()
-                        GAME.MusicPlayer.load(resource_path("music\\Menu.ogg"))
+                        GAME.MusicPlayer.load(resource_path("music/Menu.ogg"))
                         GAME.MusicPlayer.play(-1)
     
         for event in GAME.getevent(): #Iterates through and handles player input events
@@ -2741,7 +2741,7 @@ def Inventory():
     countrypages = []
     buffpages = []
     GAME.MusicPlayer.unload()
-    GAME.MusicPlayer.load(resource_path("music\\Loading.ogg"))
+    GAME.MusicPlayer.load(resource_path("music/Loading.ogg"))
     GAME.MusicPlayer.play(-1)
     while countries != []:
         page = pygame.Surface(GAME.screen.get_size())
