@@ -1593,8 +1593,7 @@ class Battle:
             for event in GAME.getevent():                       #Gets user input events, iterates through them
                 if event.type == pygame.QUIT: 
                     GAME.SFXPlayer.play(GAME.ClickSound)           #If cross in corner pressed, stop running this game loop
-                    if not isinstance(self, TutorialBattle):
-                        CONN.Send("RESIGN")
+                    self.BattleFinished(False)
                     self.run = False                               #This will return you to the Main Menu
                 elif event.type == pygame.MOUSEBUTTONDOWN:         #Checks for clicks
                     if event.button == 1:                          #If left click
@@ -1630,17 +1629,22 @@ class Battle:
 
     def GetEnemyActions(self) -> list:
         "Get the enemy players choices and send off your own"
+        t = Thread(target=LoadScreen, args=["Waiting for enemy..."])
         for i in range(2):
             self.PlayerActions[i][2] = hash(self.playerCountries[i].Buff)
             self.PlayerActions[i][1] = self.playerCountries[i].UnitsBought
         CONN.SendToPlayer("READY", self.enemy.key)
         data = CONN.Receive()
-        while data["Command"] != "READY":
+        while data["Command"] != "READY" and data["Command"] != "RESIGN":
             for event in GAME.getevent():
                 pass
+        if data["Command"] == "RESIGN":
+            t.quit()
+            t.join()
+            self.BattleFinished(True)
+            return
         CONN.SendToPlayer("CHANGES", self.enemy.key, self.PlayerActions[0])
         self.PlayerActions = [[[hash(self.countries[0]), None], {}, None], [[hash(self.countries[1]), None], {}, None]]
-        t = Thread(target=LoadScreen, args=["Waiting for enemy..."])
         data = CONN.Receive()
         while data["Command"] != "CHANGES":
             for event in GAME.getevent():
@@ -1653,6 +1657,7 @@ class Battle:
     def BattleFinished(self, win: bool):
         t = Thread(target=LoadScreen, args=["Getting rewards..."])
         if not isinstance(self, TutorialBattle):
+            CONN.SendToPlayer("RESIGN", self.enemy.key)
             CONN.SetBattleSock()
         if win:
             msg = "WIN"
