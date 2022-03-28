@@ -64,7 +64,7 @@ class Card(pygame.sprite.Sprite):
         self.right = False
         self.cardSize = (150, 245.5)
         self.highlighted = False
-        self.highlightImage = pygame.image.load(resource_path("art/Highlight.png")).convert_alpha() 
+        self.highlightImage = pygame.image.load(resource_path("art/highlight.png")).convert_alpha() 
         self.highlightImage = pygame.transform.scale(self.highlightImage, self.cardSize)
         self.priority = False
         priorityImage = pygame.image.load(resource_path("art/priority.png")).convert_alpha()
