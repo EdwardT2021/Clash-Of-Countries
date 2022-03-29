@@ -2216,7 +2216,7 @@ class StageManager:
         enemyActions = self._Battle.GetEnemyActions()
         attacks = []
         for i in range(len(self._EnemyCountries)):
-            actions = enemyActions[i]
+            actions = enemyActions[i][0]
             card = self._EnemyCountries[i]
             if card.dead:
                 continue
