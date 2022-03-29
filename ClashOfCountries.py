@@ -1645,11 +1645,6 @@ class Battle:
         return temp
 
     def SendPlayerActions(self):
-        data = CONN.Receive()
-        while data["Command"] != "READYTORECEIVE":
-            for event in GAME.getevent():
-                pass
-            data = CONN.Receive()
         CONN.SendToPlayer("CHANGES", self.enemy.key, self.PlayerActions[0])
         data = CONN.Receive()
         while data["Command"] != "RECEIVED":
@@ -1669,18 +1664,21 @@ class Battle:
         for i in range(2):
             self.PlayerActions[i][2] = hash(self.playerCountries[i].Buff)
             self.PlayerActions[i][1] = self.playerCountries[i].UnitsBought
-        readied = False
-        data = CONN.Receive()
-        if data["Command"] == "READY":
-            readied = True
-        CONN.SendToPlayer("READY", self.enemy.key)
-        if not readied:
+        if self.playerFirst:
+            CONN.SendToPlayer("READY", self.enemy.key)
             data = CONN.Receive()
             while data["Command"] != "READY" and data["Command"] != "RESIGN":
                 for event in GAME.getevent():
                     pass
                 data = CONN.Receive()
-            readied = True
+        else:
+            data = CONN.Receive()
+            while data["Command"] != "READY" and data["Command"] != "RESIGN":
+                for event in GAME.getevent():
+                    pass
+                data = CONN.Receive()
+            CONN.SendToPlayer("READY", self.enemy.key)
+        
         if data["Command"] == "RESIGN":
             t.quit()
             t.join()
@@ -1688,9 +1686,15 @@ class Battle:
             return
         if self.playerFirst:
             self.SendPlayerActions()
+            CONN.SendToPlayer("READYTORECEIVE", self.enemy.key)
             data = self.ReceiveEnemyActions()
         else:
             data = self.ReceiveEnemyActions()
+            data2 = CONN.Receive()
+            while data2["Command"] != "READYTORECEIVE":
+                for event in GAME.getevent():
+                    pass
+                data2 = CONN.Receive()
             self.SendPlayerActions()
         self.PlayerActions = [[[hash(self.countries[0]), None], [], None], [[hash(self.countries[1]), None], [], None]]
         t.quit()
