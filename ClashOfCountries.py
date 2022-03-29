@@ -1729,7 +1729,7 @@ class Battle:
                 data = CONN.Receive()
                 continue
             elo = int(data["Args"][0])
-            eloGain = elo - GAME.PLAYER.elo
+            eloGain = elo - int(GAME.PLAYER.elo)
             GAME.PLAYER.ChangeElo(elo)
             elo = str(elo)
         if isinstance(rewardCard, Country):
