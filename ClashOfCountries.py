@@ -1137,15 +1137,17 @@ class Connection:
                 if e == s.timeout:
                     continue
                 else:
-                    self.SetBattleSock()
-                return
+                    print(e)
     
     def SetNormalMode(self):
         try:
             self.battleSock.close()
         except:
             pass
-        
+        try:
+            self.battleEnemySock.close()
+        except:
+            pass
         self.PORT = 11034
         self.SOCK = self.regularSock
     
@@ -1175,14 +1177,10 @@ class Connection:
                 except Exception as e:
                     print(e)
                     break
-                for event in pygame.event.get():
+                for event in GAME.getevent():
                     pass
             self.SOCK = self.battleEnemySock
-    
-    def SetBattleSock(self):
-        self.PORT = 11035  
-        self.battleEnemySock.close()
-        self.SOCK = self.battleSock
+        self.battleSock.close()
     
     def SendToPlayer(self, command: str, key: rsa.PublicKey, *args):
         "Takes a command and arguments and encodes and sends to server"
@@ -1695,15 +1693,18 @@ class Battle:
 
     def BattleFinished(self, win: bool):
         t = Thread(target=LoadScreen, args=["Getting rewards..."])
-        if not isinstance(self, TutorialBattle):
-            CONN.SetBattleSock()
         if win:
-            msg = "WIN"
+            msg = "GETREWARDWIN"
             screen = self.victoryScreen
         else:
-            msg = "LOSS"
+            msg = "GETREWARDLOSS"
             screen = self.defeatScreen
+        if not isinstance(self, TutorialBattle):
+            CONN.SetNormalMode()
+        else:
+            msg = "GETREWARDTUTORIAL"
         CONN.Send(msg)
+        rewardCard = self.GetRewards() #type: Card
         timeTaken = self.GameBar.GetBattleTime()
         timeTaken = GAME.smallBoldFont.render(timeTaken, True, WHITE)
         enemyString = self.GameBar.enemy.username
@@ -1713,7 +1714,7 @@ class Battle:
         else:
             data = CONN.Receive()
             while data["Command"] != "ELO":
-                for event in pygame.event.get():
+                for event in GAME.getevent():
                     pass
                 data = CONN.Receive()
                 continue
@@ -1721,7 +1722,6 @@ class Battle:
             eloGain = elo - GAME.PLAYER.elo
             GAME.PLAYER.ChangeElo(elo)
             elo = str(elo)
-        rewardCard = self.GetRewards() #type: Card
         if isinstance(rewardCard, Country):
             CONN.AddCountry(rewardCard)
         elif isinstance(rewardCard, Buff):
@@ -1748,8 +1748,6 @@ class Battle:
         self.run = False
 
     def GetRewards(self) -> Card:
-        if isinstance(self, TutorialBattle):
-            CONN.Send("GETREWARDTUTORIAL")
         data = CONN.Receive()
         while data["Command"] != "REWARD":
             for event in GAME.getevent():
@@ -1768,6 +1766,7 @@ class Battle:
                 card = PlayerDefensiveCountry(production, towns, name)
         elif data["Args"][0] == "BUFF":
             card = eval(data["Args"][1]+"Buff()")
+        CONN.Send("RECEIVED")
         return card
 
 class TutorialBattle(Battle):
@@ -3029,7 +3028,7 @@ def Play():
     CONN.Send("MATCHMAKE")
     data = CONN.Receive()
     while data["Command"] != "MATCHMADE":
-        for event in pygame.event.get():
+        for event in GAME.getevent():
             if event.type == pygame.QUIT:
                 t.quit()
                 CONN.Send("UNMATCHMAKE")
@@ -3082,21 +3081,21 @@ def Play():
             data = CONN.Receive()
     data = CONN.Receive()
     while data["Command"] != "BATTLE": #Expects Dict containing key "EnemyCountries"
-        for event in pygame.event.get():
+        for event in GAME.getevent():
             pass
         data = CONN.Receive()
     battle = data["Args"][0]
     CONN.SendToPlayer("RECEIVED", enemy.key)
     data2 = CONN.Receive() 
     while data2["Command"] != "BATTLE": #Expects Dict containing key "EnemyBuffs"
-        for event in pygame.event.get():
+        for event in GAME.getevent():
             pass
         data2 = CONN.Receive()
     battle2 = data2["Args"][0]
     CONN.SendToPlayer("RECEIVED", enemy.key)
     data3 = CONN.Receive() 
     while data3["Command"] != "BATTLE": #Expects Dict containing key "EnemyBuffs"
-        for event in pygame.event.get():
+        for event in GAME.getevent():
             pass
         data3 = CONN.Receive()
     battle3 = data3["Args"][0]

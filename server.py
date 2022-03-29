@@ -251,7 +251,8 @@ class Player:
         self.wins = wins #type: int
         self.losses = losses #type: int
         self.elo = elo #type: int
-        self.Battle = False
+        self.Battle = None
+        self.enemy = None
         self.socket = socket #type: socket.socket
         self.key = key #type: rsa.PublicKey
     
@@ -262,9 +263,11 @@ class Battle:
 
     def __init__(self, player1: Player, player2: Player):
         self.player1 = player1
+        self.player1.enemy = player2
         self.player2 = player2
-        self.player1.Battle = True
-        self.player2.Battle = True
+        self.player2.enemy = player1
+        self.player1.Battle = self
+        self.player2.Battle = self
         self.player1first = bool(random.randint(0, 1))
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #Socket specifying using the tcp/ip protocol
         self.__host = socket.gethostbyname(socket.gethostname()) #Server ip address
@@ -412,7 +415,10 @@ class Server: #Class containing server methods and attributes
         conn.send(rsa.encrypt(encMessage, key)) #Sends the command through the socket
     
     def receive(self, conn: socket.socket) -> tuple[str, str]:
-        data = conn.recv(2048)
+        try:
+            data = conn.recv(2048)
+        except:
+            return None, None
         new = rsa.decrypt(data, self.__privkey)
         data = json.loads(new.decode("utf-8"))
         command = data["Command"]
@@ -748,6 +754,29 @@ class Server: #Class containing server methods and attributes
             
             elif command == "GETREWARDTUTORIAL":
                 self.getReward(client, player)
+            
+            elif command == "GETREWARDWIN":
+                if player.Battle is not None:
+                    probabilityOfWin = ELOCALC.calculateProbabilityOfWin(player.elo, player.enemy.elo)
+                    newElo = ELOCALC.calculateNewElo(player.elo, probabilityOfWin, 1)
+                    self.getReward(client, player)
+                    data = self.receive(client)
+                    while data[0] != "RECEIVED":
+                        data = self.receive(client) 
+                    self.send("ELO", client, player.key, newElo)
+            elif command == "GETREWARDLOSS":
+                if player.Battle is not None:
+                    probabilityOfWin = ELOCALC.calculateProbabilityOfWin(player.elo, player.enemy.elo)
+                    newElo = ELOCALC.calculateNewElo(player.elo, probabilityOfWin, 0)
+                    num = random.random()
+                    if num <= 0.3:
+                        self.getReward(client, player)
+                    else:
+                        self.send("REWARD", client, player.key, None)
+                    data = self.receive(client)
+                    while data[0] != "RECEIVED":
+                        data = self.receive(client) 
+                    self.send("ELO", client, player.key, newElo)
             
     def __matchmakeInsert(self, player: Player):
         elo = player.elo
