@@ -2230,6 +2230,7 @@ class StageManager:
                     for i in self._EnemyBuffs:
                         if actions[2] == hash(i):
                             buff = i
+                            print(buff)
                             break
                 else:
                     buff = actions[2]
