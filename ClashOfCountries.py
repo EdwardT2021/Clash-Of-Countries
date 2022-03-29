@@ -1759,6 +1759,7 @@ class Battle:
             for event in GAME.getevent():
                 pass
             data = CONN.Receive()
+        card = None
         if data["Args"][0] == "COUNTRY":
             name = data["Args"][1][0]
             towns = data["Args"][1][1]
@@ -2258,7 +2259,7 @@ class StageManager:
                 card.prodpower += card.Buff.change * card.factories
                 card.prodpowerbuffadded = True
             
-        self._AttackTracker.NewTurn(attacks, self._Battle.playerFirst)
+        self._AttackTracker.NewTurn(attacks, self._Battle.playerFirst, self._PlayerCountries)
         self.NextStage()
     
     def ActionDenied(self):
@@ -2483,9 +2484,17 @@ class AttackTracker:
         except er.ActionNotUniqueError:
             return False
         
-    def NewTurn(self, enemyAttacks: list, playerFirst: bool):
+    def NewTurn(self, enemyAttacks: list, playerFirst: bool, playerCountries: list[Country]):
+        playerattacks = self.GetAttacksThisTurn()
+        attackList = []
+        for i in playerattacks:
+            if i[0] == hash(playerCountries[0]):
+                attackList.append(i)
+                playerattacks.remove(i)
+                attackList += playerattacks
+                break
         if playerFirst:
-            self.Queue.AddAttacks(self.GetAttacksThisTurn())
+            self.Queue.AddAttacks()
             self.Queue.AddAttacks(enemyAttacks)
         else:
             self.Queue.AddAttacks(enemyAttacks)
