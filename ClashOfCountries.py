@@ -894,11 +894,11 @@ class Country(Card):
     
     def __hash__(self) -> str:
         "Creates a unique hash for the country"
-        return Hash(f"{self.name}{self.production}{self.towns}{self.type}")
+        return Hash(f"{self.name}{self.production}{self.baseTowns}{self.type}")
     
     def __getstate__(self) -> dict:
         "Called by pickle.dump/s(), returns the variables needed for instanciation and its class"
-        d = {"Production": self.production, "Towns": self.towns, "Name": self.name, "instance": self.__class__}
+        d = {"Production": self.production, "Towns": self.baseTowns, "Name": self.name, "instance": self.__class__}
         return d
     
     def __setstate__(self, d: dict):
@@ -2227,7 +2227,13 @@ class StageManager:
             card.army.AddAttackArtillery(actions[1][4])
             card.fortifications += actions[1][5]
             if actions[2] != None:
-                card.AddBuff(actions[2])
+                if not isinstance(actions[2], Buff):
+                    for i in self._EnemyBuffs:
+                        if actions[2] == hash(i):
+                            buff = i
+                else:
+                    buff = actions[2]
+                card.AddBuff(buff)
             if actions[0][1] is not None:
                 attacks.append(actions[0])
         for card in self._Countries:
