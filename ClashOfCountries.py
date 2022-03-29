@@ -2494,11 +2494,11 @@ class AttackTracker:
                 attackList += playerattacks
                 break
         if playerFirst:
-            self.Queue.AddAttacks()
+            self.Queue.AddAttacks(attackList)
             self.Queue.AddAttacks(enemyAttacks)
         else:
             self.Queue.AddAttacks(enemyAttacks)
-            self.Queue.AddAttacks(self.GetAttacksThisTurn())
+            self.Queue.AddAttacks(attackList)
         self.CurrentTurnAttacks = HashTable(10)
         return 
     
