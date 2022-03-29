@@ -301,59 +301,9 @@ class Battle:
         print("p1 key: ", key1)
         self.p2socket.send(key1)
         print(f"Battle between {player1.username} and {player2.username} initialised!")
-                
-    def Run(self):
-        print("Battle running")
-        run = True
-        p1received = False
-        p2received = False
-        while run:
-            if not p1received:
-                try:
-                    p1finished = SERVER.receive(self.p1socket)
-                    p1received = True
-                    if p1finished[0] == "RESIGN":
-                        p1finished = "LOSE"
-                        p2finished = "WIN"
-                except:
-                    pass
-            if not p2received:
-                try:
-                    p2finished = SERVER.receive(self.p2socket)
-                    p2received = True
-                    if p2finished[0] == "RESIGN":
-                        p2finished = "LOSE"
-                        p1finished = "WIN"
-                except:
-                    pass
-                
-            if not (p1received or p2received):
-                continue
-            
-            if p1finished == "WIN" or p2finished == "LOSE":
-                winner = self.player1
-                winsock = self.p1socket
-                loser = self.player2
-                losesock = self.p2socket
-            else:
-                winner = self.player2
-                winsock = self.p2socket
-                loser = self.player1
-                losesock = self.p2socket
-
-        probabilityofwinnerwin = ELOCALC.calculateProbabilityOfWin(winner.elo, loser.elo)
-        probabilityofloserwin = ELOCALC.calculateProbabilityOfWin(loser.elo, winner.elo)
-        winner.elo = ELOCALC.calculateNewElo(winner.elo, probabilityofwinnerwin, 1)
-        loser.elo = ELOCALC.calculateNewElo(loser.elo, probabilityofloserwin, 0)
-        SERVER.send("ELO", winsock, winner.key, winner.elo)
-        SERVER.send("ELO", losesock, loser.key, loser.elo)
-        SERVER.getReward(winsock, winner)
-        if random.random() <= 0.3:
-            SERVER.getReward(losesock, loser)
-        else:  
-            SERVER.send("REWARD", losesock, loser.key, "NONE")
-        winner.Battle = None
-        loser.Battle = None
+        self.p1socket.close()
+        self.p2socket.close()
+        self.__socket.close()
 
 class Thread(threading.Thread): #Custom class for threading
 
@@ -846,9 +796,6 @@ class Server: #Class containing server methods and attributes
             self.send("MATCHMADE", player.socket, player.key)
             self.send("MATCHMADE", opponent.socket, opponent.key)
             battle = Battle(player, opponent) 
-            battleThread = Thread(battle.Run)
-            self.__battleThreads.append(battleThread)
-            battleThread.start()
 
     def __binarySearchMatchmake(self, pool: list[Player], value: int, first: int, last: int) -> Player:
         if first > last:
