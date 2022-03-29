@@ -3069,6 +3069,7 @@ def Play():
         for event in GAME.getevent():
             pass
         setupdata = CONN.Receive()
+    CONN.Send("RECEIVED")
     received = False
     while not received:
         try:

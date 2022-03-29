@@ -294,11 +294,13 @@ class Battle:
 
         SERVER.send("IP", self.p1socket, self.player1.key, self.player2.socket.getpeername()[0], self.player1first)
         key2 = self.player2.key.save_pkcs1("PEM")
-        print("p2 key: ", key2)
+        while SERVER.receive(self.p1socket)[0] != "RECEIVED":
+            continue
         self.p1socket.send(key2)
         SERVER.send("IP", self.p2socket, self.player2.key, self.player1.socket.getpeername()[0], not self.player1first)
         key1 = self.player1.key.save_pkcs1("PEM")
-        print("p1 key: ", key1)
+        while SERVER.receive(self.p2socket)[0] != "RECEIVED":
+            continue
         self.p2socket.send(key1)
         print(f"Battle between {player1.username} and {player2.username} initialised!")
         self.p1socket.close()
