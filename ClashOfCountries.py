@@ -1724,7 +1724,7 @@ class Battle:
                     pass
                 data = CONN.Receive()
                 continue
-            elo = data["Args"][0]
+            elo = int(data["Args"][0])
             eloGain = elo - GAME.PLAYER.elo
             GAME.PLAYER.ChangeElo(elo)
             elo = str(elo)
