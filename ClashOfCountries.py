@@ -1765,7 +1765,7 @@ class Battle:
             elif subclass == "DEF":
                 card = PlayerDefensiveCountry(production, towns, name)
         elif data["Args"][0] == "BUFF":
-            card = eval(data["Args"][1]+"Buff()")
+            card = eval(data["Args"][1]+"Buff(True)")
         CONN.Send("RECEIVED")
         return card
 
@@ -2230,7 +2230,7 @@ class StageManager:
                     for i in self._EnemyBuffs:
                         if actions[2] == hash(i):
                             buff = i
-                            print(buff)
+                            i.ApplyToCountry(card)
                             break
                 else:
                     buff = actions[2]
