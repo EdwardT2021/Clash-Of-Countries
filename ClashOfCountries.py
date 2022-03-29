@@ -2070,6 +2070,14 @@ class StageManager:
                 self._AttackTracker.Queue = AttackQueue()
                 self.NextStage()
                 return []
+            if isinstance(attack[0], int):
+                for i in self._EnemyCountries:
+                    if attack[0] == hash(i):
+                        attack[0] = i
+            if isinstance(attack[1], int):
+                for i in self._EnemyCountries:
+                    if attack[1] == hash(i):
+                        attack[1] = i
             self._Combatants = attack
             if attack[0].dead:
                 rect = pygame.rect.Rect(GAME.SCREENWIDTH/2-125, GAME.SCREENHEIGHT/2-55, 250, 110)

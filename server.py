@@ -835,7 +835,7 @@ class Server: #Class containing server methods and attributes
             towns = [30, 35, 40, 45, 50, 55, 60]
             towns = towns[random.randint(0, len(towns)-1)]
             production = [20, 25, 30, 35, 40]
-            production = production[random.randint(0, len(towns)-1)]
+            production = production[random.randint(0, len(production)-1)]
             name = self.__generateName()
             subclass = ["AGG", "BAL", "DEF"]
             subclass = subclass[random.randint(0, len(subclass)-1)]
