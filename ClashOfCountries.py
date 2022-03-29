@@ -1669,12 +1669,18 @@ class Battle:
         for i in range(2):
             self.PlayerActions[i][2] = hash(self.playerCountries[i].Buff)
             self.PlayerActions[i][1] = self.playerCountries[i].UnitsBought
-        CONN.SendToPlayer("READY", self.enemy.key)
+        readied = False
         data = CONN.Receive()
-        while data["Command"] != "READY" and data["Command"] != "RESIGN":
-            for event in GAME.getevent():
-                pass
+        if data["Command"] == "READY":
+            readied = True
+        CONN.SendToPlayer("READY", self.enemy.key)
+        if not readied:
             data = CONN.Receive()
+            while data["Command"] != "READY" and data["Command"] != "RESIGN":
+                for event in GAME.getevent():
+                    pass
+                data = CONN.Receive()
+            readied = True
         if data["Command"] == "RESIGN":
             t.quit()
             t.join()
