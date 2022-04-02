@@ -1,5 +1,6 @@
 import socket as s
 import random as r
+from urllib.parse import non_hierarchical
 import clientErrors as er
 import pygame
 from os import path
@@ -749,6 +750,7 @@ class Country(Card):
         self.deathImage = pygame.image.load(resource_path("art/Death.png")).convert_alpha() 
         self.deathImage = pygame.transform.scale(self.deathImage, self.cardSize)
         self.armyunits = None #type: pygame.Surface
+        self.Opponent = None
 
     def DrawUnits(self):
         if self.image == self.cardBack:
@@ -1018,7 +1020,7 @@ class Connection:
 
     def __init__(self):
         t = Thread(target=LoadScreen, args=["Connecting to server!"])
-        self.HOST = "192.168.1.64"
+        self.HOST = "127.0.1.1"
         self.PORT = 11034
         self.SOCK = s.socket(s.AF_INET, s.SOCK_STREAM)
         self.regularSock = self.SOCK
@@ -1546,7 +1548,6 @@ class Battle:
         self.messageQueue = MessageQueue(50)
         self.GameBar = GameBar(player, enemy, playerFirst)
         self.NextTurnButton = Button("Confirm Actions", BLACK, BLUE, ROYALBLUE, GAME.tinyBoldFont, 900, 55, 150, 30)
-        self.AttackTracker = AttackTracker()
         self.StageManager = StageManager(enemyCountries, enemyBuffs, playerCountries, playerBuffs, self)
         self.victoryScreen = pygame.image.load(resource_path("art/Victory.png")).convert_alpha()
         self.defeatScreen = pygame.image.load(resource_path("art/Defeat.png")).convert_alpha()
@@ -1591,7 +1592,8 @@ class Battle:
             for event in GAME.getevent():                       #Gets user input events, iterates through them
                 if event.type == pygame.QUIT: 
                     GAME.SFXPlayer.play(GAME.ClickSound)           #If cross in corner pressed, stop running this game loop
-                    CONN.SendToPlayer("RESIGN", self.enemy.key)
+                    if not isinstance(self, TutorialBattle):
+                        CONN.SendToPlayer("RESIGN", self.enemy.key)
                     self.BattleFinished(False)
                     self.run = False                               #This will return you to the Main Menu
                 elif event.type == pygame.MOUSEBUTTONDOWN:         #Checks for clicks
@@ -1765,10 +1767,10 @@ class Battle:
             data = CONN.Receive()
         card = None
         if data["Args"][0] == "COUNTRY":
-            name = data["Args"][1][0]
-            towns = data["Args"][1][1]
-            subclass = data["Args"][1][2]
-            production = data["Args"][1][3]
+            name = data["Args"][1]
+            towns = data["Args"][2]
+            subclass = data["Args"][3]
+            production = data["Args"][4]
             if subclass == "AGG":
                 card = PlayerAggressiveCountry(production, towns, name)
             elif subclass == "BAL":
@@ -1798,11 +1800,14 @@ class TutorialBattle(Battle):
             if country.dead:
                 actionList.append([])
                 continue
+            buff = None
+            enemyCard = None
             for action in actions:
                 if action == "Attack":
-                    enemyCard = self.playerCountries[r.randint(0, len(self.playerCountries)-1)]
-                    while enemyCard.dead:
+                    if r.random() > 0.5:
                         enemyCard = self.playerCountries[r.randint(0, len(self.playerCountries)-1)]
+                        while enemyCard.dead:
+                            enemyCard = self.playerCountries[r.randint(0, len(self.playerCountries)-1)]
                 elif action == "Production":
                     while country.prodpower >= 75:
                         unit = productionList[r.randint(0, len(productionList)-1)]
@@ -1816,9 +1821,11 @@ class TutorialBattle(Battle):
                         buff = buffs[num]
                         buffs.remove(buff)
                         buff.ApplyToCountry(country)
-                    else:
-                        buff = None
-            templist = [[country, enemyCard], country.UnitsBought.copy(), buff]
+            templist = [[hash(country), None], country.UnitsBought.copy(), None]
+            if enemyCard is not None:
+                templist[0][1] = hash(enemyCard)
+            if buff is not None:
+                templist[2] = hash(buff)
             actionList.append(templist)
                     
         return actionList
@@ -1850,26 +1857,20 @@ class StageManager:
         self._Combatants = () #type: tuple[Country, Country]
         self.GunShotsPlaying = False
         self.BattleWaitTime = 0
+        self.PlayerCardsDead = 0
+        self.EnemyCardsDead = 0
 
     def UpdateAndGetRenderables(self):
         renderables = [self._NextTurnButton]
         renderables += self._cards
-        dead = 0
-        for card in self._EnemyCountries:
-            if card.dead:
-                dead += 1
-        if dead == len(self._EnemyCountries):
+        if self.PlayerCardsDead == 2:
+            self._Battle.BattleFinished(False)
+        elif self.EnemyCardsDead == 2:
             self._Battle.BattleFinished(True)
-            return []
-        dead = 0
+
         for card in self._PlayerCountries:
             if card.highlighted and self._Stage == "ChooseProduction":
                 card.DrawUnits()
-            if card.dead:
-                dead += 1
-        if dead == len(self._PlayerCountries):
-            self._Battle.BattleFinished(False)
-            return []
         if self._Stage == "Move":
             renderables += self.RenderMoveStage()
         elif self._Stage == "Flip":
@@ -2076,11 +2077,33 @@ class StageManager:
         for card in self._cards:
             card.highlighted = False
         if not self._AttackInProgress:
+            try:
+                print(self._AttackTracker.Queue)
+            except:
+                pass
             attack = self._AttackTracker.Queue.GetAttack()
             if attack == (None):
                 self._AttackTracker.Queue = AttackQueue()
                 self.NextStage()
                 return []
+            for country in self._PlayerCountries:
+                if hash(country) == attack[0]:
+                    attack[0] = country
+                    break
+            for country in self._EnemyCountries:
+                if hash(country) == attack[0]:
+                    attack[0] = country
+                    break
+            if isinstance(attack[0], EnemyCountry):
+                for country in self._PlayerCountries:
+                    if hash(country) == attack[1]:
+                        attack[1] = country
+                        break
+            elif isinstance(attack[0], PlayerCountry):
+                for country in self._EnemyCountries:
+                    if hash(country) == attack[1]:
+                        attack[1] = country
+                        break
             self._Combatants = attack
             if attack[0].dead:
                 rect = pygame.rect.Rect(GAME.SCREENWIDTH/2-125, GAME.SCREENHEIGHT/2-55, 250, 110)
@@ -2112,7 +2135,7 @@ class StageManager:
                 for card in self._Countries:
                     card.highlighted = False
                 self.GunShotsPlaying = False
-                self.CalculateBattleOutcome()  
+                self.CalculateBattleOutcome() 
         return self._Renderables["Attacking"]
 
     def GenerateDaggers(self, attacker: Country, defender: Country):
@@ -2174,6 +2197,10 @@ class StageManager:
             if defender.towns <= 0:
                 defender.towns = 0
                 defender.Die()
+                if isinstance(defender, EnemyCountry):
+                    self.EnemyCardsDead += 1
+                elif isinstance(defender, PlayerCountry):
+                    self.PlayerCardsDead += 1
                 message = f"{defender.name} was defeated by {attacker.name}! {defender.name} is totally destroyed!"
         else:
             message = f"{defender.name} successfully defended against {attacker.name}!"
@@ -2187,6 +2214,8 @@ class StageManager:
             defender.army.ResetStart()
         defender.SetDetails()
         attacker.SetDetails()
+        defender.Opponent = None
+        attacker.Opponent = None
 
     def HandleAttackChoice(self, country: Country):
         if self._AttackTracker.CheckCountry(self._CardSelected):
@@ -2226,7 +2255,7 @@ class StageManager:
         enemyActions = self._Battle.GetEnemyActions()
         attacks = []
         for i in range(len(self._EnemyCountries)):
-            actions = enemyActions[i][0]
+            actions = enemyActions[i]
             card = self._EnemyCountries[i]
             if card.dead:
                 continue
@@ -2246,24 +2275,14 @@ class StageManager:
                 else:
                     buff = actions[2]
                 card.AddBuff(buff)
-            if actions[0][1] is not None:
-                for i in self._EnemyCountries:
-                    if actions[0][0] == hash(i):
-                        actions[0][0] = i
-                        break
-                for i in self._PlayerCountries:
-                    if actions[0][1] == hash(i):
-                        actions[0][1] = i
-                        break
-                attacks.append(actions[0])
         for card in self._Countries:
             card.prodpower = card.factories * card.production
             card.prodpowerbuffadded = False
-            if card.Buff.statAffected == "Production":
+            if card.Buff is not None and card.Buff.statAffected == "Production":
                 card.prodpower += card.Buff.change * card.factories
                 card.prodpowerbuffadded = True
             
-        self._AttackTracker.NewTurn(attacks, self._Battle.playerFirst, self._PlayerCountries)
+        self._AttackTracker.NewTurn(attacks, self._Battle.playerFirst, self._PlayerCountries, self._EnemyCountries)
         self.NextStage()
     
     def ActionDenied(self):
@@ -2483,28 +2502,38 @@ class AttackTracker:
     
     def AddAttackToQueue(self, attacker: Country, defender: Country):
         try:
-            self.CurrentTurnAttacks.Add((attacker, defender))
+            self.CurrentTurnAttacks.Add((hash(attacker), hash(defender)))
             return True
         except er.ActionNotUniqueError:
             return False
         
-    def NewTurn(self, enemyAttacks: list, playerFirst: bool, playerCountries: list[Country]):
+    def NewTurn(self, enemyAttacks: list, playerFirst: bool, playerCountries: list[Country], enemyCountries: list[Country]):
         playerattacks = self.GetAttacksThisTurn()
-        attackList = []
         for i in playerattacks:
             if i[0] == hash(playerCountries[0]):
-                attackList.append(i)
-                playerattacks.remove(i)
-                attackList += playerattacks
-                break
+                playerCountries[0].Opponent = i[1]
+            elif i[0] == hash(playerCountries[1]):
+                playerCountries[1].Opponent = i[1]
+        for i in enemyAttacks:
+            if i[0] == hash(enemyCountries[0]):
+                enemyCountries[0].Opponent = i[1]
+            elif i[0] == hash(enemyCountries[1]):
+                enemyCountries[1].Opponent = i[1]
+        playerOrderedAttacks = []
+        enemyOrderedAttacks = []
+        for i in playerCountries:
+            if i.Opponent is not None:
+                playerOrderedAttacks.append([hash(i), i.Opponent])
+        for i in enemyCountries:
+            if i.Opponent is not None:
+                enemyOrderedAttacks.append([hash(i), i.Opponent])
         if playerFirst:
-            self.Queue.AddAttacks(attackList)
-            self.Queue.AddAttacks(enemyAttacks)
+            self.Queue.AddAttacks(playerOrderedAttacks)
+            self.Queue.AddAttacks(enemyOrderedAttacks)
         else:
-            self.Queue.AddAttacks(enemyAttacks)
-            self.Queue.AddAttacks(attackList)
+            self.Queue.AddAttacks(enemyOrderedAttacks)
+            self.Queue.AddAttacks(playerOrderedAttacks)
         self.CurrentTurnAttacks = HashTable(10)
-        return 
     
     def GetAttacksThisTurn(self) -> list[tuple]:
         attacks = list(self.CurrentTurnAttacks)
@@ -2641,6 +2670,10 @@ class AttackQueue:
     
     def __len__(self):
         return len(self.attacks)
+    
+    def __repr__(self):
+        for i in self.attacks:
+            print(i)
 
 ##################################################################################################################################
 
