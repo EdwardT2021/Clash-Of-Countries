@@ -705,7 +705,7 @@ class Server: #Class containing server methods and attributes
                     conn.close()
             
             elif command == "GETREWARDTUTORIAL":
-                self.getReward(client, player)
+                self.getReward(client, player, tutorial=True)
             
             elif command == "GETREWARDWIN":
                 if player.Battle is not None:
@@ -831,12 +831,15 @@ class Server: #Class containing server methods and attributes
     def __generateName(self) -> str:
         return self.__CountryNames[random.randint(0, len(self.__CountryNames)-1)]
     
-    def getReward(self, client: socket.socket, player: Player) -> list:
+    def getReward(self, client: socket.socket, player: Player, tutorial=False) -> list:
+        towns = [30, 35, 40, 45, 50, 55, 60]
+        production = [20, 25, 30, 35, 40]
+        if tutorial:
+            towns = towns[:4]
+            production = production[:2]
         num = random.random()
         if num > 0.3:
-            towns = [30, 35, 40, 45, 50, 55, 60]
             towns = towns[random.randint(0, len(towns)-1)]
-            production = [20, 25, 30, 35, 40]
             production = production[random.randint(0, len(production)-1)]
             name = self.__generateName()
             subclass = ["AGG", "BAL", "DEF"]
@@ -864,7 +867,7 @@ class Server: #Class containing server methods and attributes
                     conn.commit()
         else:
             subclass = random.random()
-            if subclass > 0.3:
+            if subclass > 0.3 or tutorial:
                 subclass = "Minor"
             else:
                 subclass = "Major"
