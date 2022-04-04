@@ -1020,7 +1020,7 @@ class Connection:
 
     def __init__(self):
         t = Thread(target=LoadScreen, args=["Connecting to server!"])
-        self.HOST = "2a00:23c7:1f03:7301:ed11:7c13:4bd6:f1b7"
+        self.HOST = "81.157.207.171"
         self.PORT = 11034
         self.SOCK = s.socket(s.AF_INET, s.SOCK_STREAM)
         self.regularSock = self.SOCK
