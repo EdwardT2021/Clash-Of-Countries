@@ -1020,7 +1020,7 @@ class Connection:
 
     def __init__(self):
         t = Thread(target=LoadScreen, args=["Connecting to server!"])
-        self.HOST = "192.168.1.64"
+        self.HOST = "2a00:23c7:1f03:7301:ed11:7c13:4bd6:f1b7"
         self.PORT = 11034
         self.SOCK = s.socket(s.AF_INET, s.SOCK_STREAM)
         self.regularSock = self.SOCK
@@ -3123,6 +3123,11 @@ def Play():
     enemy = Player(ip=setupdata["Args"][0], key=key)
     CONN.SetBattlePlayerMode(setupdata["Args"][0], setupdata["Args"][1])
     if d3["First"]:
+        data = CONN.Receive()
+        while data["Command"] != "CLEAR":
+            for event in GAME.getevent():
+                pass
+            data = CONN.Receive()
         CONN.SendToPlayer("BATTLE", enemy.key, d1)
         data = CONN.Receive()
         while data["Command"] != "RECEIVED":
@@ -3141,6 +3146,7 @@ def Play():
             for event in GAME.getevent():
                 pass
             data = CONN.Receive()
+    CONN.Send("CLEAR")
     data = CONN.Receive()
     while data["Command"] != "BATTLE": #Expects Dict containing key "EnemyCountries"
         for event in GAME.getevent():
