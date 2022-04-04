@@ -1064,7 +1064,7 @@ class Connection:
         "Receive a decoded dictionary containing necessary arguments"
         try:
             data = self.SOCK.recv(2048)
-        except:
+        except s.error as e:
             return {"Command": None, "Args": None}
         try:
             data = rsa.decrypt(data, self.__PRIVATEKEY)
