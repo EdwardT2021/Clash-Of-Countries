@@ -403,8 +403,8 @@ class Server: #Class containing server methods and attributes
                         thread.start()
                     except RuntimeError:
                         try:
-                            self.__handlerThreads.remove(thread)
-                            del(thread)
+                            self.__handlerThreads.remove(thread) #Thread not explicitly deleted as handled more efficiently by garbage collector
+                                                                 #Threads can also change IDs which can cause the del() function to raise an error
                         except:
                             pass
 

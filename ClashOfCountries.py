@@ -2925,6 +2925,7 @@ def Inventory():
     pageNum = 1
     stage = "Move"
     ActionBox = Box((1080, 100), BLUE, (0, GAME.SCREENHEIGHT-100))
+    productionText = Text("Production Power: ", GAME.SCREENWIDTH//2, GAME.SCREENHEIGHT-50)
     cardSelected = None
     run = True
     click = False
@@ -2960,6 +2961,12 @@ def Inventory():
 
         elif stage == "Options":
             ActionBox.Draw()
+            if cardSelected is not None and isinstance(cardSelected, Country):
+                pp = cardSelected.prodpower
+                new = "Production Power: " + str(pp)
+                if productionText.string != new:
+                    productionText.UpdateText(new)
+                productionText.Draw()
             for button in priorityButtons:
                 button.Draw()
                 if button.rect.collidepoint((mx, my)):
@@ -3234,6 +3241,7 @@ class LoadObject:
 
 class Text:
     def __init__(self, text: str, x: int, y: int):
+        self.string = text
         self.text = GAME.smallBoldFont.render(text, True, BLACK)
         self.x = x
         self.y = y
@@ -3243,6 +3251,10 @@ class Text:
 
     def Draw(self):
         GAME.screen.blit(self.text, (self.x, self.y))
+    
+    def UpdateText(self, newText: str):
+        self.string = newText
+        self.text = GAME.smallBoldFont.render(newText, True, BLACK)
 
 def LoadScreen(string: str, thread: Thread):    
     text = GAME.boldFont.render(string, True, WHITE)
