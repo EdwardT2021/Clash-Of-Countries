@@ -402,8 +402,11 @@ class Server: #Class containing server methods and attributes
                     try:
                         thread.start()
                     except RuntimeError:
-                        self.__handlerThreads.remove(thread)
-                        del(thread)
+                        try:
+                            self.__handlerThreads.remove(thread)
+                            del(thread)
+                        except:
+                            pass
 
     def __login(self, client: socket.socket, address: str): #Login function
         with self.__loggedInLock: #Uses log in lock. If more than 10000 threads are using this, it will wait until a space is available
