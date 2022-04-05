@@ -350,10 +350,12 @@ class Server: #Class containing server methods and attributes
         self.__pool4Lock = threading.Lock()
         a = Thread(self.__accept)
         cht = Thread(self.__checkHandlerThreads)
+        cht2 = Thread(self.__checkHandlerThreads)
         mtchmke = Thread(self.__matchmake)
         self.__serverThreads.append(a) #Adds a thread that accepts new connections
         self.__serverThreads.append(cht) #Adds a thread that checks handler threads are all running
-        self.__serverThreads.append(mtchmke)
+        self.__serverThreads.append(cht2) #Adds a thread that checks handler threads are all running
+        self.__serverThreads.append(mtchmke) #Adds a thread that goes through the matchmaking pool
         for thread in self.__serverThreads:
             thread.start()
         print(f"Server Live at {self.__host, self.__port}")
@@ -389,7 +391,8 @@ class Server: #Class containing server methods and attributes
                 continue
             if address not in open("banlist.txt", "r"): #Checks if IP is banned
                 print(f"Connection from {address} accepted!")
-                self.__handlerThreads.append(Thread(self.__login, client, address)) #Creates a new thread to handle the player
+                t = Thread(self.__login, client, address)
+                self.__handlerThreads.append(t) #Creates a new thread to handle the player
 
     def __checkHandlerThreads(self): #Checks threads are active and starts them if not, if thread finished it deletes them
         print("Handler threads monitor started")
