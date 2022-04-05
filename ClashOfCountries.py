@@ -1139,7 +1139,7 @@ class Connection:
                 if e == s.timeout:
                     continue
                 else:
-                    print(e)
+                    raise e
     
     def SetNormalMode(self):
         try:
