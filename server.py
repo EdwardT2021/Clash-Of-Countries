@@ -262,19 +262,19 @@ class Player:
 class Battle:
 
     def __init__(self, player1: Player, player2: Player):
-        self.player1 = player1
-        self.player1.enemy = player2
-        self.player2 = player2
-        self.player2.enemy = player1
-        self.player1.Battle = self
-        self.player2.Battle = self
-        self.player1first = bool(random.randint(0, 1))
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #Socket specifying using the tcp/ip protocol
         self.__host = socket.gethostbyname(socket.gethostname()) #Server ip address
         self.__port = 11035 #Server port
         self.__socket.bind((self.__host, self.__port))
         self.__socket.settimeout(1)
         self.__socket.listen() #Allows the socket to act like a server
+        self.player1 = player1
+        self.player1.enemy = player2
+        self.player2 = player2
+        self.player2.enemy = player1
+        self.player1.Battle = self
+        self.player2.Battle = self
+        self.player1first = bool(random.randint(0, 1))   
         p1connected = False
         p2connected = False
         while not (p1connected and p2connected):

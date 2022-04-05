@@ -1130,15 +1130,18 @@ class Connection:
     def SetBattleMode(self):
         self.SOCK = self.battleSock
         connected = False
+        counter = 0
         while not connected:
             try:
                 self.SOCK.connect((self.HOST, 11035))
                 connected = True
             except Exception as e:
-                if e == s.timeout:
+                if isinstance(e, s.timeout):
                     continue
                 else:
-                    raise e
+                    if counter == 10:
+                        raise e
+                    counter += 1
     
     def SetNormalMode(self):
         try:
@@ -3267,7 +3270,7 @@ def LoadScreen(string: str, thread: Thread):
     while thread.running:
         GAME.screen.fill(BLUE) 
         counter += 1
-        if counter % 10 == 0:
+        if counter % 10 == 0 and counter <= 10000:
             los.append(LoadObject((GAME.SCREENWIDTH/2, GAME.SCREENHEIGHT/2)))
         for lo in los:    
             lo.Draw()
