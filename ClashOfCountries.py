@@ -1951,6 +1951,8 @@ class StageManager:
             self._Stage = "BuffOptions"
     
     def ApplyBuff(self, country: PlayerCountry):
+        if country.prodpowerbuffadded and isinstance(self._CardSelected, ProductionBuff):
+            return
         if country.dead:
             self._Stage = "ActionDenied"
             return
