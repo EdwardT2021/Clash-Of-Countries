@@ -1025,10 +1025,6 @@ class Connection:
         self.SOCK = s.socket(s.AF_INET, s.SOCK_STREAM)
         self.regularSock = self.SOCK
         self.regularSock.settimeout(1)
-        self.battleSock = s.socket(s.AF_INET, s.SOCK_STREAM)
-        self.battleSock.settimeout(1)
-        self.battleEnemySock = s.socket(s.AF_INET, s.SOCK_STREAM)
-        self.battleEnemySock.settimeout(1)
         for event in GAME.getevent():
             pass
         self.__PUBLICKEY, self.__PRIVATEKEY = rsa.newkeys(2048)
@@ -1043,7 +1039,7 @@ class Connection:
             except Exception as e:
                 print(e)
                 errorcount += 1
-            if errorcount == 15:
+            if errorcount == 10:
                 raise er.InitialConnectionError
         self.SOCK.send(self.__PUBLICKEY.save_pkcs1("PEM"))
         failed = True
@@ -1128,12 +1124,13 @@ class Connection:
         GAME.Save()
     
     def SetBattleMode(self):
-        self.SOCK = self.battleSock
+        self.SOCK = s.socket(s.AF_INET, s.SOCK_STREAM)
         connected = False
         counter = 0
         while not connected:
             try:
                 self.SOCK.connect((self.HOST, 11035))
+                self.SOCK.settimeout(1)
                 connected = True
             except Exception as e:
                 if isinstance(e, s.timeout):
@@ -1147,46 +1144,39 @@ class Connection:
     
     def SetNormalMode(self):
         try:
-            self.battleSock.close()
+            self.SOCK.close()
         except:
             pass
-        try:
-            self.battleEnemySock.close()
-        except:
-            pass
-        self.PORT = 11034
         self.SOCK = self.regularSock
     
     def SetBattlePlayerMode(self, enemyIP: str, first: bool):
-        self.battleEnemySock = s.socket(s.AF_INET, s.SOCK_STREAM)
-        self.battleEnemySock.settimeout(1)
+        self.SOCK.close()
+        self.SOCK = s.socket(s.AF_INET, s.SOCK_STREAM)
         if first:
             connected = False
-            self.battleEnemySock.bind((self.SOCK.getsockname()[0], 11036))
-            self.battleEnemySock.listen(1)
+            self.SOCK.bind((self.SOCK.getsockname()[0], 11036))
+            self.SOCK.listen()
             while not connected:
                 try:
-                    self.newSock = self.battleEnemySock.accept()[0]
+                    self.SOCK = self.SOCK.accept()[0]
+                    self.SOCK.settimeout(1)
                     connected = True
                 except Exception as e:
                     print(e)
                 for event in GAME.getevent():
                     pass
-            self.SOCK = self.newSock
         else:
             connected = False
             while not connected:
                 try:
-                    print(enemyIP)
-                    self.battleEnemySock.connect((enemyIP, 11036))
+                    self.SOCK.connect((enemyIP, 11036))
+                    self.SOCK.settimeout(1)
                     connected = True
                 except Exception as e:
                     print(e)
                     break
                 for event in GAME.getevent():
                     pass
-            self.SOCK = self.battleEnemySock
-        self.battleSock.close()
     
     def SendToPlayer(self, command: str, key: rsa.PublicKey, *args):
         "Takes a command and arguments and encodes and sends to server"
