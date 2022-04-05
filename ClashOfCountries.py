@@ -1143,6 +1143,7 @@ class Connection:
                         self.SOCK.close()
                         raise e
                     counter += 1
+                    print(e)
     
     def SetNormalMode(self):
         try:
