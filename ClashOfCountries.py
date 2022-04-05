@@ -1140,6 +1140,7 @@ class Connection:
                     continue
                 else:
                     if counter == 10:
+                        self.SOCK.close()
                         raise e
                     counter += 1
     
