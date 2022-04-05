@@ -2919,6 +2919,7 @@ def Inventory():
                 xpos += 175
                 buffs.remove(i)
             ypos += 300
+            xpos = 100
             rows += row
         buffpages.append((page, rows))
     pages = countrypages #type: list[tuple[pygame.Surface, Card]]
