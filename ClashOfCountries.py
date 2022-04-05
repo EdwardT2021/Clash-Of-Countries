@@ -787,7 +787,7 @@ class Country(Card):
         if self.Buff.statAffected == "Towns":
             self.ChangeTowns(self.Buff.change)
         elif self.Buff.statAffected == "Production":
-            self.prodpower = max(self.prodpower - self.Buff.change, 0)
+            self.prodpower = max(self.prodpower - (self.Buff.change * 50), 0)
         self.Buff = None
         self.army.ResetModifiers()
         self.SetDetails()
@@ -1952,6 +1952,7 @@ class StageManager:
     
     def ApplyBuff(self, country: PlayerCountry):
         if country.prodpowerbuffadded and isinstance(self._CardSelected, ProductionBuff):
+            self._Stage = "ActionDenied"
             return
         if country.dead:
             self._Stage = "ActionDenied"
