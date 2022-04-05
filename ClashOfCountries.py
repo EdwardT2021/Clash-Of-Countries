@@ -1119,14 +1119,13 @@ class Connection:
         if hash(c) in [hash(x) for x in GAME.PLAYER.countries]:
             return
         GAME.PLAYER.countries.append(c)
-        #self.Send("ADDCOUNTRY", c.name, c.towns, c.type, c.production)
+        GAME.Save()
     
     def AddBuff(self, b: Buff):
         if hash(b) in [hash(x) for x in GAME.PLAYER.buffs]:
             return
         GAME.PLAYER.buffs.append(b)
-        a = [type(b).__name__[:-4]]
-        #self.Send("ADDBUFF", a)
+        GAME.Save()
     
     def SetBattleMode(self):
         self.SOCK = self.battleSock
@@ -2869,7 +2868,7 @@ def Inventory():
         page.fill(BLUE)
         page.blit(InventoryText, (GAME.SCREENWIDTH/2-200, 10))
         page.blit(HintText, (10, 80))
-        ypos = 250
+        ypos = 230
         xpos = 100
         rows = []
         for i in range(2):
@@ -2888,7 +2887,7 @@ def Inventory():
                     i.priority = False
                 xpos += 175
                 countries.remove(i)
-            ypos += 300
+            ypos += 260
             xpos = 100
             rows += row
         countrypages.append((page, rows))
@@ -2898,7 +2897,7 @@ def Inventory():
         page.fill(BLUE)
         page.blit(InventoryText, (GAME.SCREENWIDTH/2-200, 10))
         page.blit(HintText, (10, 80))
-        ypos = 250
+        ypos = 230
         xpos = 100
         rows = []
         for i in range(2):
@@ -2919,7 +2918,7 @@ def Inventory():
                     i.priority = False
                 xpos += 175
                 buffs.remove(i)
-            ypos += 300
+            ypos += 260
             xpos = 100
             rows += row
         buffpages.append((page, rows))
