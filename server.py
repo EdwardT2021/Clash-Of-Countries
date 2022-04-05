@@ -797,7 +797,9 @@ class Server: #Class containing server methods and attributes
             print(player, opponent, "are battling!")
             self.send("MATCHMADE", player.socket, player.key)
             self.send("MATCHMADE", opponent.socket, opponent.key)
-            battle = Battle(player, opponent) 
+            battleThread = Thread(Battle, player, opponent) 
+            self.__battleThreads.append(battleThread)
+            battleThread.start()
 
     def __binarySearchMatchmake(self, pool: list[Player], value: int, first: int, last: int) -> Player:
         if first > last:
