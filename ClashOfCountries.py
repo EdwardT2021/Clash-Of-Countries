@@ -2889,6 +2889,7 @@ def Inventory():
                 xpos += 175
                 countries.remove(i)
             ypos += 300
+            xpos = 100
             rows += row
         countrypages.append((page, rows))
 
