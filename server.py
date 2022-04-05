@@ -266,7 +266,6 @@ class Battle:
         self.__host = socket.gethostbyname(socket.gethostname()) #Server ip address
         self.__port = 11035 #Server port
         self.__socket.bind((self.__host, self.__port))
-        self.__socket.settimeout(1)
         self.__socket.listen() #Allows the socket to act like a server
         self.player1 = player1
         self.player1.enemy = player2

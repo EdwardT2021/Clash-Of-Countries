@@ -1141,6 +1141,7 @@ class Connection:
                         raise e
                     counter += 1
                     print(e)
+                    print("in battle mode")
     
     def SetNormalMode(self):
         try:
@@ -1163,6 +1164,7 @@ class Connection:
                     connected = True
                 except Exception as e:
                     print(e)
+                    print("in battle player")
                 for event in GAME.getevent():
                     pass
         else:
