@@ -876,15 +876,18 @@ class Country(Card):
                 self.fortifications += 1
                 self.prodpower -= 300
                 self.UnitsBought[5] += 1
-        #Reset card details
+        #Update card details
         self.SetDetails()
     
     def Die(self):
+        #Called when towns is less than 0
         "Sets the dead flag and sets the image to the death image"
         self.image = self.deathImage
         self.dead = True
     
     def Reset(self):
+        #Resets a card to its original values, usually called after a battle
+        "Reset the cards position and stats to its base values"
         self.towns = self.baseTowns
         self.dead = False
         self.fortifications = self.basefortifications
@@ -893,12 +896,16 @@ class Country(Card):
         self.ResetPosition()
     
     def ToList(self) -> list:
+        #Used in transmitting the object across a network
+        "Returns a list of the form [name, towns, type, production]"
         return [self.name, self.towns, self.type, self.production]
     
     def __hash__(self) -> str:
+        #Called by the inbuilt python hash() function
         "Creates a unique hash for the country"
         return Hash(f"{self.name}{self.production}{self.baseTowns}{self.type}")
     
+    #The below functions are for definining how the object should be saved and loaded from a file
     def __getstate__(self) -> dict:
         "Called by pickle.dump/s(), returns the variables needed for instanciation and its class"
         d = {"Production": self.production, "Towns": self.baseTowns, "Name": self.name, "instance": self.__class__}
@@ -914,12 +921,16 @@ class Country(Card):
         name = d["Name"]
         d["instance"].__init__(self, production, towns, name)
 
+#Below are the subclasses for player and enemy country, and the subclasses. Each object inherits from
+#player or enemy country and from a type of country, utilising multiple inheritance.
+#The below classes set the statistics for each country type and the images for it
 class PlayerCountry(Country):
     "Subclass of country for player countries"
     def __init__(self, production, towns, name):
 
         Country.__init__(self, production, towns, name)
         self.player = True
+        self.army = None #type: PlayerArmy
     
 class EnemyCountry(Country):
     "Subclass of country for enemy countries"
@@ -977,7 +988,7 @@ class DefensiveCountry(Country):
         self.rect = self.flippedImage.get_rect()
         self.type = "DEF"
 
-### Below, multiple inheritance is used again. Class A
+#Below, multiple inheritance is used to initialise countries
 
 class PlayerAggressiveCountry(PlayerCountry, AggressiveCountry):
     "Subclass of country for player aggressive countries"
@@ -1010,7 +1021,7 @@ class EnemyBalancedCountry(EnemyCountry, BalancedCountry):
         BalancedCountry.__init__(self)
 
 class EnemyDefensiveCountry(EnemyCountry, DefensiveCountry):
-
+    "Subclass of country for player defensive countries"
     def __init__(self, production, towns, name):
         EnemyCountry.__init__(self, production, towns, name)
         DefensiveCountry.__init__(self)
@@ -1018,19 +1029,19 @@ class EnemyDefensiveCountry(EnemyCountry, DefensiveCountry):
 ###################################################################################
 
 class Connection:
-
+    "A class holding relevant data and functions to connect to the server"
     def __init__(self):
-        t = Thread(target=LoadScreen, args=["Connecting to server!"])
+        t = Thread(target=LoadScreen, args=["Connecting to server!"]) #Show the loading screen
         self.HOST = "192.168.1.64"
         self.PORT = 11034
         self.SOCK = s.socket(s.AF_INET, s.SOCK_STREAM)
         self.regularSock = self.SOCK
-        self.regularSock.settimeout(1)
-        for event in GAME.getevent():
+        self.regularSock.settimeout(1) #Sets the socket timeout to 1 second
+        for event in GAME.getevent(): #Iterates through the game events to keep the game up to date
             pass
-        self.__PUBLICKEY, self.__PRIVATEKEY = rsa.newkeys(2048)
+        self.__PUBLICKEY, self.__PRIVATEKEY = rsa.newkeys(2048) #Generate keys 
         failed = True
-        errorcount = 0
+        errorcount = 0 #Try to connect, making sure to check game events each time
         while failed:
             for event in GAME.getevent():
                 pass
@@ -1040,11 +1051,11 @@ class Connection:
             except Exception as e:
                 print(e)
                 errorcount += 1
-            if errorcount == 10:
+            if errorcount == 10: #If the connection cannot be made after 10 attempts, raise an error
                 raise er.InitialConnectionError
         self.SOCK.send(self.__PUBLICKEY.save_pkcs1("PEM"))
         failed = True
-        while failed:
+        while failed: #Attempt key exchange
             for event in GAME.getevent():
                 pass
             try:
@@ -1054,30 +1065,31 @@ class Connection:
                 print(e)
                 continue
             failed = False
-        t.quit()
+        t.quit() #End loading screen thread
         t.join()
 
     def Receive(self) -> dict:
         "Receive a decoded dictionary containing necessary arguments"
-        try:
+        try: #Attempt to receive data. Return below dictionary if something goes wrong
             data = self.SOCK.recv(2048)
         except s.error as e:
             return {"Command": None, "Args": None}
         try:
             data = rsa.decrypt(data, self.__PRIVATEKEY)
-        except Exception as e:
+        except Exception as e: #If a decryption problem occurs, return below dictionary
             print(e)
             return {"Command": None, "Args": None}
-        asString = data.decode("utf-8")
+        asString = data.decode("utf-8") #Decode and load the dictionary
         dictionary = json.loads(asString)
         print(f"{dictionary['Command']}", f"{dictionary['Args']} received")
         if dictionary["AUTH"] != AUTH:
-            raise er.UnauthorisedMessageError
+            raise er.UnauthorisedMessageError #Check the authorisation code
         return dictionary
 
 
     def Send(self, command: str, *args):
         "Takes a command and arguments and encodes and sends to server"
+        #Create dictionary and then load it into a string via json, encode it and send it
         d = {"AUTH": AUTH, "Command": None, "Args": None}
         d["Command"] = command
         if args:
@@ -1088,52 +1100,57 @@ class Connection:
     
 
     def Login(self) -> bool:
-        t = Thread(target=LoadScreen, args=["Logging In..."])
+        t = Thread(target=LoadScreen, args=["Logging In..."]) #Begin logging in loading screen
         data = CONN.Receive()
-        while data["Command"] != "LOGIN":
+        while data["Command"] != "LOGIN": #Wait to receive the login command
             for event in GAME.getevent():
                 pass
             data = CONN.Receive()
-        if GAME.New:
-            command = "SIGNUP"
+        if GAME.New: #Checks to see if the account is new or not, and signs the player up or logs them in accordingly
+            command = "SIGNUP" 
         else:
             command = "LOGIN"
-        self.Send(command, GAME.PLAYER.username, GAME.PLAYER.password)
-        print("message sent")
-        command = self.Receive()["Command"]
-        while command == None:
+        self.Send(command, GAME.PLAYER.username, GAME.PLAYER.password) #Sends player data through
+        command = self.Receive()["Command"] 
+        while command == None: #Waits for command to come through
             for event in GAME.getevent():
                 pass
             command = self.Receive()["Command"]
-        t.quit()
+        t.quit() #Exits loading screen
         t.join()
-        if command == "LOGGEDIN":
+        if command == "LOGGEDIN": #Checks to see if the login was a success and returns a boolean based on this
             return True
         else:
             return False
     
-    def AddCountry(self, c: Country):
+    def AddCountry(self, c: Country): #Checks if the country exists using their hash values, if not then it adds
+                                      #the country to the player object and calls save
+        "Add a Country card to the players inventory and saves the game"
         if hash(c) in [hash(x) for x in GAME.PLAYER.countries]:
             return
         GAME.PLAYER.countries.append(c)
         GAME.Save()
     
-    def AddBuff(self, b: Buff):
+    def AddBuff(self, b: Buff): #Checks if the buff exists using their hash values, if not then it adds
+                                #the country to the player object and calls save
+        "Add a Buff card to the players inventory and save the game"
         if hash(b) in [hash(x) for x in GAME.PLAYER.buffs]:
             return
         GAME.PLAYER.buffs.append(b)
         GAME.Save()
     
     def SetBattleMode(self):
-        self.SOCK = s.socket(s.AF_INET, s.SOCK_STREAM)
+        "Sets the socket to use port 11035, to deal with battle setup"
+        self.SOCK = s.socket(s.AF_INET, s.SOCK_STREAM) #Creates a new socket
         connected = False
         counter = 0
-        while not connected:
+        while not connected: #Attempts to connect to the server
             try:
                 self.SOCK.connect((self.HOST, 11035))
                 self.SOCK.settimeout(1)
                 connected = True
-            except Exception as e:
+            except Exception as e: #If the error is just a timeout, nothing happens, if not then after ten attempts
+                                   #an error is raised
                 if isinstance(e, s.timeout):
                     continue
                 else:
@@ -1144,7 +1161,8 @@ class Connection:
                     print(e)
                     print("in battle mode")
     
-    def SetNormalMode(self):
+    def SetNormalMode(self): #Closes current socket and sets the main socket back to the regular 11034 port socket 
+        "Return the connection back to its regular state"
         try:
             self.SOCK.close()
         except:
@@ -1152,9 +1170,11 @@ class Connection:
         self.SOCK = self.regularSock
     
     def SetBattlePlayerMode(self, enemyIP: str, first: bool):
+        "Sets up a peer to peer connection between a player and enemy. First represents which side will act as server"
         self.SOCK.close()
         self.SOCK = s.socket(s.AF_INET, s.SOCK_STREAM)
         if first:
+            #If first, act as a server to accept the incoming connection and use the socket that spawns from that as the main one
             connected = False
             self.SOCK.bind((self.SOCK.getsockname()[0], 11036))
             self.SOCK.listen()
@@ -1168,7 +1188,7 @@ class Connection:
                     print("in battle player")
                 for event in GAME.getevent():
                     pass
-        else:
+        else: #If not first, act as a client and send the connect request
             connected = False
             while not connected:
                 try:
@@ -1181,8 +1201,8 @@ class Connection:
                 for event in GAME.getevent():
                     pass
     
-    def SendToPlayer(self, command: str, key: rsa.PublicKey, *args):
-        "Takes a command and arguments and encodes and sends to server"
+    def SendToPlayer(self, command: str, key: rsa.PublicKey, *args): #The same as Send, but allows different keys
+        "Takes a command and arguments and encodes and sends to player. Allows for key specification"
         d = {"AUTH": AUTH, "Command": None, "Args": None}
         d["Command"] = command
         if args:
@@ -1195,7 +1215,7 @@ class Connection:
 ##################################################################################
 
 class Player:
-
+    #Simple class used for storing player data. This object is pickled by Game.Save()
     def __init__(self, username="", password=0, countries=[], buffs=[], wins=0, losses=0, elo=0, ip="", key=""):
         "Player object containing relevant player data"
         self.username = username #type: str
@@ -1209,8 +1229,6 @@ class Player:
         self.prioritycountries = [] #type: list[Country]
         self.prioritybuffs = [] #type: list[Buff]
         self.key = key #type: rsa.PublicKey
-        if isinstance(self.key, rsa.PublicKey):
-            print("key: ", self.key._save_pkcs1_pem())
     
     def Text(self) -> str:
         "Returns a string in the form USERNAME - Elo: ELO"
@@ -1224,19 +1242,22 @@ class Player:
         self.username = username
     
     def SetPriority(self, card: Card):
+        #Checks the type of card and accesses the relevant list
         if isinstance(card, Buff):
             priority = self.prioritybuffs
+            cardtype = "BUFF"
         else:
             priority = self.prioritycountries
-        if card in priority:
+            cardtype = "COUNTRY"
+        if card in priority: #Checks if the card is already prioritised
             return
-        priority.append(card)
+        priority.append(card) #If not, adds the card to the list, and sets the priority flag on the card
         card.priority = True
-        CONN.Send("PRIORITYCOUNTRY", hash(card))
-        while len(priority) > 2:
+        CONN.Send("PRIORITY"+cardtype, hash(card)) #Sends a request to prioritise the card
+        while len(priority) > 2: #Makes sure the list is only of length 2, deprioritises the first item in the lists
             old = priority.pop(0)
             old.priority = False
-            CONN.Send("DEPRIORITISECOUNTRY", hash(old))
+            CONN.Send("DEPRIORITISE"+cardtype, hash(old))
     
     def ChangeElo(self, newElo: int):
         self.elo = newElo
@@ -1253,53 +1274,52 @@ class Game:
 
     def __init__(self):
         "Object containing necessary game data and initialisation procedure. Also deals with saving the game"
-        pygame.init()
+        pygame.init() #Sets up pygame window and module, sets the icon and caption
         pygame.display.set_caption("Clash Of Countries") 
+        pygame.display.set_icon(pygame.image.load(resource_path("clashofcountries.ico")).convert_alpha())
         self.SCREENWIDTH = 1080
         self.SCREENHEIGHT = 720
-        self.__screen = pygame.display.set_mode((self.SCREENWIDTH, self.SCREENHEIGHT))
-        pygame.display.set_icon(pygame.image.load(resource_path("clashofcountries.ico")).convert_alpha())
-        self.screen = pygame.Surface((self.SCREENWIDTH, self.SCREENHEIGHT)).convert_alpha()
-        self.FPS = 65
+        self.__screen = pygame.display.set_mode((self.SCREENWIDTH, self.SCREENHEIGHT)) #This is the main screen the user seess
+        self.screen = pygame.Surface((self.SCREENWIDTH, self.SCREENHEIGHT)).convert_alpha() #This is the screen other objects blit to
+        self.FPS = 65 #Sets the number of frames per second, loads the fonts
         self.boldFont = pygame.font.Font(resource_path("fonts/rexlia.otf"), 24)
         self.regularFont = pygame.font.Font(resource_path("fonts/rexlia.otf"), 14)
         self.tinyBoldFont = pygame.font.Font(resource_path("fonts/rexlia.otf"), 11)
         self.smallBoldFont = pygame.font.Font(resource_path("fonts/rexlia.otf"), 16)
         self.bigBoldFont = pygame.font.Font(resource_path("fonts/rexlia.otf"), 40)
-        self.clock = pygame.time.Clock()
-        self.PLAYER = Player(username="PLACEHOLDER", elo="1000")
-        background = pygame.image.load(resource_path("art/battle.png")).convert_alpha()
+        self.clock = pygame.time.Clock() #Sets up the game clock
+        self.PLAYER = Player(username="PLACEHOLDER", elo="1000") #Initialises a base value for player
+        background = pygame.image.load(resource_path("art/battle.png")).convert_alpha() #Loads some necessary images
         self.background = pygame.transform.scale(background, (1080, 720))
         self.titlescreen = pygame.image.load(resource_path("art/titlescreen.png")).convert_alpha()
-        self.shaking = False
+        self.shaking = False #Sets some flags and values for screenshake
         self.shakeMagnitude = 0
         self.shakeMagnitudeRange = 0
         self.shaken = False
-        self.MainMenuItems = [] #type: list[Button]
-        self.Area = "MainMenu"
-        pygame.mixer.init()
-        self.MusicPlayer = pygame.mixer.music
+        self.MainMenuItems = [] #type: list[Button] #contains a list of buttons used in the main menu
+        pygame.mixer.init() #Initialises the sound part of the pygame module
+        self.MusicPlayer = pygame.mixer.music #Sets some interfaces for parts of the module
         self.SFXPlayer = pygame.mixer.Sound
-        self.ClickSound = pygame.mixer.Sound(resource_path("sfx/click.ogg"))
-        self.BattleSound = []
+        self.ClickSound = pygame.mixer.Sound(resource_path("sfx/click.ogg")) #Loads the click sound
+        self.BattleSound = [] #Loads the different types of battle sound
         for i in range(1, 4):
             self.BattleSound.append(pygame.mixer.Sound(resource_path(f"sfx/shots{i}.ogg")))
-        self.MarchingSound = pygame.mixer.Sound(resource_path("sfx/march.ogg"))
+        self.MarchingSound = pygame.mixer.Sound(resource_path("sfx/march.ogg")) #Loads marching sound
     
     def LoadPlayer(self):
-        t = Thread(LoadScreen, ["Loading Player Data..."])
-        try:
+        t = Thread(LoadScreen, ["Loading Player Data..."]) #Begins loading screen
+        try: #Tries to open the save file which should be located in its own directory if it exists
             with open(path.abspath(path.dirname(sys.argv[0])) + "/COC.save", "rb") as f:
-                self.PLAYER = pickle.load(f)
-                if not isinstance(self.PLAYER, Player):
+                self.PLAYER = pickle.load(f) #Attempts to load the player object
+                if not isinstance(self.PLAYER, Player): #If it has been corrupted and is no longer a player object, raise an error
                     raise TypeError
                 f.close()
-            self.New = False
+            self.New = False #As the file exists this is not a new game so sets the new flag to false
         except:
-            self.Save()
+            self.Save() #If it doesnt exist or has been corrupted, it creates/overwrites the file and sets new to true
             self.New = True
-        t.quit()
-        t.join()
+        t.quit() #Quits the loading screen
+        t.join() 
         
 
     def Draw_bg(self):
@@ -1307,7 +1327,7 @@ class Game:
         self.screen.blit(self.background, (0, 0))
     
     def Draw_menu(self):
-        "Adds "
+        "Adds the main menu items to the attribute self.MainMenuItems"
         if self.MainMenuItems == []:
             xOffset = GAME.SCREENWIDTH // 12
             PlayButton = Button("Play", BLACK, BLUE, ROYALBLUE, GAME.boldFont, xOffset, 620, 100, 50)
@@ -1316,21 +1336,19 @@ class Game:
             self.MainMenuItems.append(TutorialButton)
             exitButton = Button("Exit", BLACK, BLUE, ROYALBLUE, GAME.boldFont, 9*xOffset, 620, 100, 50)
             self.MainMenuItems.append(exitButton)
-        
-    def SetArea(self, area):
-        self.Area = area
 
     def Save(self):
         "Saves the player object to COC.save"
-        t = Thread(LoadScreen, ["Saving Game..."])
-        with open(path.abspath(path.dirname(sys.argv[0])) + "/COC.save", "wb") as f:
-            pickle.dump(self.PLAYER, f)
-            f.close()
-        t.quit()
+        t = Thread(LoadScreen, ["Saving Game..."]) #Begins loading screen
+        with open(path.abspath(path.dirname(sys.argv[0])) + "/COC.save", "wb") as f: #Opens the save file or creates it in write mode
+            pickle.dump(self.PLAYER, f) #Dumps the player object to the file, overwriting it
+            f.close() 
+        t.quit() #Ends loading screen
         t.join()
 
-    def Update(self):
-        self.__screen.fill(BLACK)
+    def Update(self): 
+        "Call every frame. Blits the secondary screen to the main screen and implements screen shake"
+        self.__screen.fill(BLACK) #Fill the screen to clear it
         if self.shaking: #Checks if shaking flag set
             self.shakeMagnitudeRange *= -1 #Flip the offset from left to right or right to left
             if self.shakeMagnitudeRange > 0: #If its not 0, decrement the absolute value by 0.5
@@ -1341,10 +1359,10 @@ class Game:
                 self.shaking = False #If its 0, it is no longer shaking
             num = r.random() 
             if num < 0.4:
-                self.shakeMagnitude = 0 #set offset to 0 40% of the time to Add uniqueness and fluidity
+                self.shakeMagnitude = 0 #set offset to 0 40% of the time to add fluidity, so it doesnt rubber band everywhere
             else:
                 self.shakeMagnitude = self.shakeMagnitudeRange
-            self.UpdateFPS()
+            self.UpdateFPS() #updates the fps counter on screen
             self.__screen.blit(self.screen, (self.shakeMagnitudeRange, 0)) #Blit game surface to the display with the offset
         else:
             self.UpdateFPS()
@@ -1352,7 +1370,7 @@ class Game:
         self.clock.tick(self.FPS) #Add one to the frame counter
         
         pygame.display.update() #Updates display
-        self.screen.fill(BLACK)
+        self.screen.fill(BLACK) #Clears secondary screen
 
     def Shake(self, magnitude: int):
         "Sets the screen Shake flags and sets the magnitude in pixels"
@@ -1367,16 +1385,17 @@ class Game:
         self.shakeMagnitude = 0
     
     def UpdateFPS(self):
-        fps = "FPS: " + str(int(self.clock.get_fps()))
-        text = self.smallBoldFont.render(fps, True, BLACK)
-        GAME.screen.blit(text, (10, 51))
+        fps = "FPS: " + str(int(self.clock.get_fps())) #Gets the fps and truncates to an integer before converting to string
+        text = self.smallBoldFont.render(fps, True, BLACK) #Renders the fps string
+        GAME.screen.blit(text, (10, 51)) #Blits it to the screen
     
-    def getevent(self) -> list:
+    def getevent(self) -> list: #Gets a list of game events
         return pygame.event.get()
         
 #####################################################################################
 
 class GameMessage(pygame.sprite.Sprite):
+
     def __init__(self, Text: str, font: pygame.font.Font, colour: str, rect: pygame.Rect, timer: int, infinite=False):
         "Class containing both timed and infinite game messages - use infinite flag to set infinite timer"
         pygame.sprite.Sprite.__init__(self)
@@ -1430,43 +1449,45 @@ class GameMessage(pygame.sprite.Sprite):
 
 #####################################################################################
 
-class MessageQueue():
+class MessageQueue: #This is a modified circular queue
     "Class containing game message queue, so that messages cannot override each other"
     def __init__(self, length):
-        self._items = []
+        self._items = [] #type: list[GameMessage]
         self._start = 0
         self._end = 0
         self._length = length
-        for i in range(0, length):
+        for i in range(0, length): #Creates an empty queue the same size as the length specified
             self._items.append(None)
                 
-    def QueuePop(self):
-        if self._start == self._length - 1:
+    def QueuePop(self): #Moves the start pointer along
+        if self._start == self._length - 1: #Sets it back to the start if the end of the queue is reached
             self._start = 0
         else:
             self._start += 1
-    def Add(self, item: GameMessage):
+
+    def Add(self, item: GameMessage): #Adds an item to the queue and changes the end pointer appropriately
         self._items[self._end] = item
-        if self._end == self._length - 1:
+        if self._end == self._length - 1: #Sets it to 0 if the end has reached the length
             self._end = 0
         else:
             self._end += 1
 
     def Update(self):
         "Draw item onto the screen, reduce the timer by 1, and kill the object if the timer hits 0"
-        if self._items[self._start] is not None:
-            if self._items[self._start].UpdateBool:
-                self._items[self._start].timer -= 1
-                self._items[self._start].Draw()
-            if self._items[self._start].timer <= 0:
+        if not self.IsEmpty(): #Checks if there is an item to draw
+            if self._items[self._start].UpdateBool: #Checks if the item needs updating
+                self._items[self._start].timer -= 1 #If so, reduces the timer by 1
+                self._items[self._start].Draw() #Draws the message
+            if self._items[self._start].timer <= 0: #If the messages timer has hit 0, kill the object
                 self._items[self._start].kill()
-                self._items[self._start] = None
-                self.QueuePop()
+                self._items[self._start] = None #And set its queue position back to None
+                self.QueuePop() #Moves the queue pointers
     
     def IsEmpty(self) -> bool:
-        if self._items[self._start] is None:
+        if self._items[self._start] is None: #Checks if first item is None. If so, returns true. Otherwise false is returned
             return True
         return False
+
 #####################################################################################
 
 class Button:
