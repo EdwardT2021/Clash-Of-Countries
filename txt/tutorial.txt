@@ -30,11 +30,7 @@ DEFENSIVE countries are represented by BLUE
 An example of each country except defensive is shown on the board 
 Who knows, one could await you at the end of this battle!
 There are many different types of BUFF, affecting all statistics
-There are FORTIFICATION buffs, that add a number of fortifications to your country
-There are PRODUCTION buffs, that increase your production multiplier
-There are ATTACK and DEFENSE buffs, that increase your attack and defense
-There are SIEGE ATTACK and SIEGE DEFENSE buffs, that increase your siege attack and siege defense
-There are TOWN buffs, that increase the number of towns in a country
+These include FORTIFICATIONS, ATTACK, DEFENSE, SIEGE ATTACK, SIEGE DEFENSE AND PRODUCTION buffs
 Now you should be prepared for this battle! You can come back here and play the tutorial battle anytime, without this dialogue!
 And remember, to go back to the main menu, just press the cross in the corner!
 Good luck, and have fun!

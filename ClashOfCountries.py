@@ -1493,24 +1493,24 @@ class MessageQueue: #This is a modified circular queue
 class Button:
     "Class for a simple button"
     def __init__(self, Text: str, textColour: str, boxColour: str, highlightColour: str, font: pygame.font.Font, left: float, top: float, width: float, height: float, hintText="", highlighttext=[]):
-        self.string = str(Text)
+        self.string = str(Text) #Assigns dimensions and attributes, ensuring they are in the right format
         self.left = float(left)
         self.top = float(top)
         self.width = float(width)
         self.height = float(height)
-        self.rect = pygame.Rect(self.left, self.top, self.width, self.height)
-        self.textHeight = self.top + (self.height // 2)
+        self.rect = pygame.Rect(self.left, self.top, self.width, self.height) #Creates the rect the button will lie in
+        self.textHeight = self.top + (self.height // 2) #This determines the gap between the edge of the box and the text
         self.textCentre = self.left + (self.width // 2)
         self.textColour = textColour
         self.boxColour = boxColour
         self.font = font
         self.Text = self.font.render(Text, True, self.textColour)
-        self.TextBox = self.Text.get_rect(center=(self.textCentre, self.textHeight))
+        self.TextBox = self.Text.get_rect(center=(self.textCentre, self.textHeight)) #This is the rect the text will be in
         self.highlightColour = highlightColour
-        self.border = pygame.Rect(self.left-2, self.top-2, self.width+4, self.height+4)
-        self.hintText = GAME.smallBoldFont.render(hintText, True, WHITE)
+        self.border = pygame.Rect(self.left-2, self.top-2, self.width+4, self.height+4) #A simple border 2 pixels wide
+        self.hintText = GAME.smallBoldFont.render(hintText, True, WHITE) #Optional text displayed above the original text in white to provide extra information about the button choice
         self.hintBox = self.hintText.get_rect(center=(self.textCentre, self.textHeight-25))
-        if highlighttext != []:
+        if highlighttext != []: #Optional text displayed when the button is hovered over with the mouse
             self.highlightBox = pygame.Rect(left, top - 82, width, 80)
             self.hboxborder = pygame.Rect(left-2, top-84, width + 4, 84)
             self.highlighttext = []
@@ -1525,12 +1525,12 @@ class Button:
         GAME.screen.blit(self.Text, self.TextBox)
         GAME.screen.blit(self.hintText, self.hintBox)
         
-    def Highlight(self):
+    def Highlight(self): #called whenever the mouse is hovered over the button. Changes the buttons colour and if available displays highlight text
         "Draw highlighted button"
         pygame.draw.rect(GAME.screen, self.highlightColour, self.rect)
         GAME.screen.blit(self.Text, self.TextBox)
         GAME.screen.blit(self.hintText, self.hintBox)
-        if self.highlighttext is not False:
+        if self.highlighttext is not False: 
             pygame.draw.rect(GAME.screen, BLACK, self.hboxborder)
             pygame.draw.rect(GAME.screen, self.boxColour, self.highlightBox)
             y = self.highlightBox.y + 10
@@ -1538,7 +1538,8 @@ class Button:
                 GAME.screen.blit(text, (self.highlightBox.x+3, y))
                 y += 12
     
-    def UpdateString(self, string: str):
+    def UpdateString(self, string: str): #Allows the string in the button to be updated
+        "Change the string inside the button"
         self.string = string
         self.Text = self.font.render(string, True, self.textColour)
         self.TextBox = self.Text.get_rect(center=(self.textCentre, self.textHeight))
@@ -1557,17 +1558,17 @@ class Battle:
         self.countries = self.playerCountries + self.enemyCountries #type: list[Country]
         self.buffs = self.playerBuffs + self.enemyBuffs #type: list[Buff]
         self.cards = self.countries + self.buffs #type: list[Country or Buff]
-        for card in self.cards:
+        for card in self.cards: #Ensures all cards are reset and displaying correct details before being shown on screen
             card.Reset()
             card.SetDetails()
         self.background = GAME.background
-        self.setPlayerPositions() #type: list[tuple[int, int]]
+        self.setPlayerPositions() #type: list[tuple[int, int]] #Sets player and enemy card positions
         self.setEnemyPositions() #type: list[tuple[int, int]]
-        self.messageQueue = MessageQueue(50)
-        self.GameBar = GameBar(player, enemy, playerFirst)
-        self.NextTurnButton = Button("Confirm Actions", BLACK, BLUE, ROYALBLUE, GAME.tinyBoldFont, 900, 55, 150, 30)
-        self.StageManager = StageManager(enemyCountries, enemyBuffs, playerCountries, playerBuffs, self)
-        self.victoryScreen = pygame.image.load(resource_path("art/Victory.png")).convert_alpha()
+        self.messageQueue = MessageQueue(50) #Instantiates the message queue
+        self.GameBar = GameBar(player, enemy, playerFirst) #Instantiates the game bar at the top of the screen
+        self.NextTurnButton = Button("Confirm Actions", BLACK, BLUE, ROYALBLUE, GAME.tinyBoldFont, 900, 55, 150, 30) #Instantiates the next turn button
+        self.StageManager = StageManager(enemyCountries, enemyBuffs, playerCountries, playerBuffs, self) #Instantiates the stage manager that handles what objects to render
+        self.victoryScreen = pygame.image.load(resource_path("art/Victory.png")).convert_alpha() #Loads images
         self.defeatScreen = pygame.image.load(resource_path("art/Defeat.png")).convert_alpha()
         self.run = False
         self.TutorialDialogue = False
