@@ -3160,7 +3160,7 @@ def Play():
             for event in GAME.getevent():
                 pass
             data = CONN.Receive()
-    CONN.Send("CLEAR")
+    CONN.SendToPlayer("CLEAR", enemy.key)
     data = CONN.Receive()
     while data["Command"] != "BATTLE": #Expects Dict containing key "EnemyCountries"
         for event in GAME.getevent():
