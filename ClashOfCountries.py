@@ -555,6 +555,7 @@ class ProductionBuff(LinearBuff):
         self.flippedImage = pygame.Surface(self.cardSize).convert_alpha()
         self.flippedImage.blit(card, (0, 0))
         self.rect = self.flippedImage.get_rect()
+        self.applied = False
 
 class MinorProductionBuff(ProductionBuff, MinorBuff):
     "Subclass for Minor Production Buffs that inherits from ProductionBuff and MinorBuff. +2 increases"
@@ -1564,7 +1565,7 @@ class Battle:
         self.background = GAME.background
         self.setPlayerPositions() #type: list[tuple[int, int]] #Sets player and enemy card positions
         self.setEnemyPositions() #type: list[tuple[int, int]]
-        self.messageQueue = MessageQueue(50) #Instantiates the message queue
+        self.messageQueue = MessageQueue(37) #Instantiates the message queue, the same length as the tutorial messages
         self.GameBar = GameBar(player, enemy, playerFirst) #Instantiates the game bar at the top of the screen
         self.NextTurnButton = Button("Confirm Actions", BLACK, BLUE, ROYALBLUE, GAME.tinyBoldFont, 900, 55, 150, 30) #Instantiates the next turn button
         self.StageManager = StageManager(enemyCountries, enemyBuffs, playerCountries, playerBuffs, self) #Instantiates the stage manager that handles what objects to render
@@ -1572,15 +1573,15 @@ class Battle:
         self.defeatScreen = pygame.image.load(resource_path("art/Defeat.png")).convert_alpha()
         self.run = False
         self.TutorialDialogue = False
-        GAME.MusicPlayer.unload()
+        GAME.MusicPlayer.unload() #Unloads previous music and loads up the battle theme
         GAME.MusicPlayer.load(resource_path("music/Battle.ogg"))
-        self.PlayerActions = [[[hash(self.countries[0]), None], [], None], [[hash(self.countries[1]), None], [], None]]
+        self.PlayerActions = [[[hash(self.countries[0]), None], [], None], [[hash(self.countries[1]), None], [], None]] #Creates the template for how actions are stored per turn
     
     def Run(self):
         "Begin the battle game loop"
-        GAME.MusicPlayer.set_volume(0.1)
+        GAME.MusicPlayer.set_volume(0.1) #Sets the volume and sets the music to play on an infinite loop
         GAME.MusicPlayer.play(-1)
-        click = False
+        click = False #Set click flags
         clicked = False
         self.run = True
         while self.run: #Game loop
@@ -1594,7 +1595,7 @@ class Battle:
             self.GameBar.Draw(self.StageManager.GetTurn()) #Blits top game bar to game surface
             mx, my = pygame.mouse.get_pos() #Gets mouse position
             self.messageQueue.Update() #Updates game messages
-            renderableobjs = self.StageManager.UpdateAndGetRenderables()       
+            renderableobjs = self.StageManager.UpdateAndGetRenderables() #Gets renderables and iterates through them, detecting if a click has occurred and handling it
             for renderable in renderableobjs:
                 renderable.Draw()
                 if renderable.rect.collidepoint((mx, my)):
@@ -1624,7 +1625,7 @@ class Battle:
 
             GAME.Update() #Update the game
 
-        for card in self.playerCountries:
+        for card in self.playerCountries: #Resets players cards
             card.Reset()
         for card in self.playerBuffs:
             card.Reset()
@@ -1632,7 +1633,7 @@ class Battle:
     def setPlayerPositions(self):
         "Set player positions with respect to the screen size"
         for i in range(2):
-            pos = (GAME.SCREENWIDTH/4+50, 220+270*i)
+            pos = (GAME.SCREENWIDTH/4+50, 220+270*i) #Sets position of the player cards iteratively
             self.playerCountries[i].UpdatePosition(pos)
         for i in range(2):
             pos = (130, 220+270*i)
@@ -1641,38 +1642,37 @@ class Battle:
     def setEnemyPositions(self):
         "Set enemy positions with respect to the screen size"
         for i in range(2):
-            pos = ((GAME.SCREENWIDTH/4)*3-50, 220+270*i)
+            pos = ((GAME.SCREENWIDTH/4)*3-50, 220+270*i) #Sets position of the enemy cards iteratively
             self.enemyCountries[i].UpdatePosition(pos)
         for i in range(2):
             pos = (GAME.SCREENWIDTH-130, 220+270*i)
             self.enemyBuffs[i].UpdatePosition(pos)
 
     def ReceiveEnemyActions(self) -> list:
-        CONN.SendToPlayer("READYTORECEIVE", self.enemy.key)
+        CONN.SendToPlayer("READYTORECEIVE", self.enemy.key) #Tells the enemy the player is ready to receive the actions
         data = CONN.Receive()
-        while data["Command"] != "CHANGES":
+        while data["Command"] != "CHANGES": #Receives the first set of changes
             for event in GAME.getevent():
                 pass
             data = CONN.Receive()
-        CONN.SendToPlayer("RECEIVED", self.enemy.key)
+        CONN.SendToPlayer("RECEIVED", self.enemy.key) #Sends back a message saying this has been received, acting as a clear-to-send
         data2 = CONN.Receive()
-        while data2["Command"] != "CHANGES":
+        while data2["Command"] != "CHANGES": #Receives next set of changes
             for event in GAME.getevent():
                 pass
             data2 = CONN.Receive()
-        CONN.SendToPlayer("RECEIVED", self.enemy.key)
-        temp = [data["Args"][0], data2["Args"][0]]
-        print(temp)
+        CONN.SendToPlayer("RECEIVED", self.enemy.key) #Sends back a message saying this has been received, acting as a clear-to-send
+        temp = [data["Args"][0], data2["Args"][0]] #Combines the actions into a single iterable
         return temp
 
-    def SendPlayerActions(self):
-        CONN.SendToPlayer("CHANGES", self.enemy.key, self.PlayerActions[0])
+    def SendPlayerActions(self): 
+        CONN.SendToPlayer("CHANGES", self.enemy.key, self.PlayerActions[0]) #Sends first set of changes and waits for confirmation
         data = CONN.Receive()
         while data["Command"] != "RECEIVED":
             for event in GAME.getevent():
                 pass
             data = CONN.Receive()
-        CONN.SendToPlayer("CHANGES", self.enemy.key, self.PlayerActions[1])
+        CONN.SendToPlayer("CHANGES", self.enemy.key, self.PlayerActions[1]) #Sends second set of changes and waits for confirmation
         data = CONN.Receive()
         while data["Command"] != "RECEIVED":
             for event in GAME.getevent():
@@ -1681,35 +1681,39 @@ class Battle:
 
     def GetEnemyActions(self) -> list:
         "Get the enemy players choices and send off your own"
-        t = Thread(target=LoadScreen, args=["Waiting for enemy..."])
-        for i in range(2):
+        t = Thread(target=LoadScreen, args=["Waiting for enemy..."]) #Begins loading screen
+        for i in range(2): #Fills the template for action details
             self.PlayerActions[i][2] = hash(self.playerCountries[i].Buff)
             self.PlayerActions[i][1] = self.playerCountries[i].UnitsBought
-        if self.playerFirst:
+        if self.playerFirst: #If you are the first player, send a message saying you are ready to send changes and wait for the enemy to also be ready
             CONN.SendToPlayer("READY", self.enemy.key)
             data = CONN.Receive()
-            while data["Command"] != "READY" and data["Command"] != "RESIGN":
+            while data["Command"] != "READY" and data["Command"] != "RESIGN": #Checks if the enemy has resigned or is ready to swap actions
                 for event in GAME.getevent():
                     pass
                 data = CONN.Receive()
         else:
-            data = CONN.Receive()
-            while data["Command"] != "READY" and data["Command"] != "RESIGN":
+            data = CONN.Receive() #If you arent the first player, waits for the ready signal then responds with your own
+            while data["Command"] != "READY" and data["Command"] != "RESIGN": 
                 for event in GAME.getevent():
                     pass
                 data = CONN.Receive()
-            CONN.SendToPlayer("READY", self.enemy.key)
+            CONN.SendToPlayer("READY", self.enemy.key) 
         
-        if data["Command"] == "RESIGN":
+        if data["Command"] == "RESIGN": #If the enemy has resigned, end the loading screen and win the battle
             t.quit()
             t.join()
             self.BattleFinished(True)
             return
-        if self.playerFirst:
+
+        if self.playerFirst: #If you are the first player, wait for the opponent to be ready to receive and then call the SendPlayerActions function
+            data = CONN.Receive()
+            while data["Command"] != "READYTORECEIVE":
+                for event in GAME.getevent():
+                    pass
             self.SendPlayerActions()
-            CONN.SendToPlayer("READYTORECEIVE", self.enemy.key)
             data = self.ReceiveEnemyActions()
-        else:
+        else: #If not, call the receive actions function and then wait for confirmation to send and call the send actions function
             data = self.ReceiveEnemyActions()
             data2 = CONN.Receive()
             while data2["Command"] != "READYTORECEIVE":
@@ -1717,68 +1721,73 @@ class Battle:
                     pass
                 data2 = CONN.Receive()
             self.SendPlayerActions()
-        self.PlayerActions = [[[hash(self.countries[0]), None], [], None], [[hash(self.countries[1]), None], [], None]]
+        self.PlayerActions = [[[hash(self.countries[0]), None], [], None], [[hash(self.countries[1]), None], [], None]] #Reset the template for user actions
         t.quit()
-        t.join()
+        t.join() #End the loading screen
         return data
 
-    def BattleFinished(self, win: bool):
-        t = Thread(target=LoadScreen, args=["Getting rewards..."])
-        if win:
+    def BattleFinished(self, win: bool): 
+        t = Thread(target=LoadScreen, args=["Getting rewards..."]) #Begin loading screen
+        if win: #Set the correct image background and message depending on whether the player won
             msg = "GETREWARDWIN"
             screen = self.victoryScreen
         else:
             msg = "GETREWARDLOSS"
             screen = self.defeatScreen
-        if not isinstance(self, TutorialBattle):
+        if not isinstance(self, TutorialBattle): #Reset the connection if this wasnt a tutorial battle
             CONN.SetNormalMode()
         else:
-            msg = "GETREWARDTUTORIAL"
-        CONN.Send(msg)
-        rewardCard = self.GetRewards() #type: Card
-        timeTaken = self.GameBar.GetBattleTime()
+            msg = "GETREWARDTUTORIAL" #Otherwise set the message to the tutorial reward message. The server has less reward options for tutorial wins
+        CONN.Send(msg) #Send the message to the server
+        rewardCard = self.GetRewards() #Get the reward card from the server
+        timeTaken = self.GameBar.GetBattleTime() #Get the time taken for the battle and then render it and the enemies username
         timeTaken = GAME.smallBoldFont.render(timeTaken, True, WHITE)
         enemyString = self.GameBar.enemy.username
         enemyString = GAME.smallBoldFont.render(enemyString, True, WHITE)
         if isinstance(self, TutorialBattle):
-            eloGain = "0"
-        else:
+            eloGain = "0" #If its a tutorial battle, no elo is lost or gained
+        else: #Otherwise, wait for the server to send the details of elo loss/gain
             data = CONN.Receive()
             while data["Command"] != "ELO":
                 for event in GAME.getevent():
                     pass
                 data = CONN.Receive()
                 continue
-            elo = int(data["Args"][0])
+            elo = int(data["Args"][0]) #Get the new elo and render the elo change
             eloGain = str(elo - int(GAME.PLAYER.elo))
-            GAME.PLAYER.ChangeElo(elo)
-        if isinstance(rewardCard, Country):
-            CONN.AddCountry(rewardCard)
+            GAME.PLAYER.ChangeElo(elo) #Change the player objects elo
+        if isinstance(rewardCard, Country): #Check the class of the card received and call the appropriate function
+            CONN.AddCountry(rewardCard) 
         elif isinstance(rewardCard, Buff):
             CONN.AddBuff(rewardCard)
-        eloGain = GAME.smallBoldFont.render(eloGain, True, WHITE)
-        rewardCard.rect.topleft = (660, 250)
-        rewardCard.Flip()
-        rewardCard.SetDetails()
+        eloGain = GAME.smallBoldFont.render(eloGain, True, WHITE) #Render elo change
+        if rewardCard is not None: #Check if the card is None, and if its not set its position and tell it to flip
+            rewardCard.rect.topleft = (660, 250)
+            rewardCard.Flip()
+            rewardCard.SetDetails()
         timer = 0
-        t.quit()
+        stop = False
+        t.quit() #End the loading screen
         t.join()
-        while timer <= 500:
+        while timer <= 500: #For 500 ticks, display the battle information and the reward card
+            if stop: #Check the stop flag
+                break
             timer += 1
             GAME.screen.blit(screen, (0, 0))
             GAME.screen.blit(timeTaken, (440, 205))
             GAME.screen.blit(enemyString, (440, 263))
             GAME.screen.blit(eloGain, (440, 325))
-            rewardCard.Update()
-            rewardCard.Draw()
-            for event in GAME.getevent():                       #Gets user input events, iterates through them
-                if event.type == pygame.QUIT:                      #If cross in corner pressed, stop running this game loop
-                    break
+            if rewardCard is not None:
+                rewardCard.Update()
+                rewardCard.Draw()
+            for event in GAME.getevent(): #Gets user input events, iterates through them
+                if event.type == pygame.QUIT: #If cross in corner pressed, set stop flag
+                    stop = True
             GAME.Update()
         self.run = False
 
     def GetRewards(self) -> Card:
-        data = CONN.Receive()
+        data = CONN.Receive() #Wait to receive the reward from the server and load the card
         while data["Command"] != "REWARD":
             for event in GAME.getevent():
                 pass
@@ -1797,49 +1806,48 @@ class Battle:
                 card = PlayerDefensiveCountry(production, towns, name)
         elif data["Args"][0] == "BUFF":
             card = eval(data["Args"][1]+"Buff(True)")
-        CONN.Send("RECEIVED")
+        CONN.Send("RECEIVED") #Send confirmation that it has been received
         return card
 
 class TutorialBattle(Battle):
     "Class containing the slightly different logic from a normal battle"
     def __init__(self, playerName, playerCountries: list, playerBuffs: list, enemyName, enemyCountries: list, enemyBuffs: list):
-        super(TutorialBattle, self).__init__(playerName, playerCountries, playerBuffs, enemyName, enemyCountries, enemyBuffs, True)
+        super(TutorialBattle, self).__init__(playerName, playerCountries, playerBuffs, enemyName, enemyCountries, enemyBuffs, True) 
         if GAME.New:
-            self.TutorialDialogue = False
+            self.TutorialDialogue = True #Set the tutorial dialogue to true if the player is new
 
     def GetEnemyActions(self) -> list:
         "Returns a list containing actions for each country, from top to bottom. list[0] = [[ATTACKLIST], [PRODUCTIONLIST], [BUFFLIST]]"
         actionList = []
-        actions = ["Production", "Attack", "ApplyBuff"]
         productionList = ["Infantry", "Tank", "Plane", "Defense Artillery", "Attack Artillery", "Fortification"]
         buffs = self.enemyBuffs.copy()
         countries = self.enemyCountries
-        for country in countries:
-            if country.dead:
+        for country in countries: #Iterate through enemy countries
+            if country.dead: #If the country is dead, add an empty action list to the total action lost
                 actionList.append([])
-                continue
+                continue #skip this country
             buff = None
             enemyCard = None
-            for action in actions:
-                if action == "Attack":
-                    if r.random() > 0.5:
-                        enemyCard = self.playerCountries[r.randint(0, len(self.playerCountries)-1)]
-                        while enemyCard.dead:
-                            enemyCard = self.playerCountries[r.randint(0, len(self.playerCountries)-1)]
-                elif action == "Production":
-                    while country.prodpower >= 75:
-                        unit = productionList[r.randint(0, len(productionList)-1)]
-                        country.PurchaseUnit(unit)
-                elif action == "ApplyBuff":
-                    if country.Buff is None:
-                        try:
-                            num = r.randint(0, len(buffs)-1)
-                        except ValueError:
-                            num = 0
-                        buff = buffs[num]
-                        buffs.remove(buff)
-                        buff.ApplyToCountry(country)
-            templist = [[hash(country), None], country.UnitsBought.copy(), None]
+
+            if country.Buff is None: #If the country has no buff applied, attempt to pick a random buff from the list 
+                try:
+                    num = r.randint(0, len(buffs)-1)
+                except ValueError: #If there is only one buff left, use that one
+                    num = 0
+                buff = buffs[num]
+                buffs.remove(buff)
+                buff.ApplyToCountry(country)
+
+            while country.prodpower >= 75: #Purchase random units until there is not enough production power left
+                unit = productionList[r.randint(0, len(productionList)-1)]
+                country.PurchaseUnit(unit)
+
+            if r.random() > 0.5: #50% chance for the enemy to attack, picks a random country that isnt dead to attack
+                enemyCard = self.playerCountries[r.randint(0, len(self.playerCountries)-1)]
+                while enemyCard.dead:
+                    enemyCard = self.playerCountries[r.randint(0, len(self.playerCountries)-1)]
+            
+            templist = [[hash(country), None], country.UnitsBought.copy(), None] #Builds the action list for the country
             if enemyCard is not None:
                 templist[0][1] = hash(enemyCard)
             if buff is not None:
@@ -1853,43 +1861,43 @@ class TutorialBattle(Battle):
 class StageManager:
     "Class to manage the game progression thats seperate to the game loop"
     def __init__(self, enemyCountries: list["EnemyCountry"], enemyBuffs: list["Buff"], playerCountries: list["PlayerCountry"], playerBuffs: list["Buff"], battle: Battle):
-        self._Stage = "Move"
+        self._Stage = "Move" #Sets flag containing stage
         self._cards = enemyCountries + enemyBuffs + playerCountries + playerBuffs #type: list[Card]
         self._Countries = enemyCountries + playerCountries #type: list[Country]
         self._PlayerCountries = playerCountries
         self._PlayerBuffs = playerBuffs
         self._EnemyCountries = enemyCountries
         self._EnemyBuffs = enemyBuffs
-        self._AttackTracker = AttackTracker()
+        self._AttackTracker = AttackTracker() #Initialises data structure to keep track of attacks
         self._Renderables = {"Move": None, "Flip": None, "CountryOptions": None, "BuffOptions": None, "Attack": None, "Production": None,  
-                            "Attacking": None, "Victory": None, "Defeat": None, "ActionDenied": None, "ApplyBuff": None, "Tutorial": None}
-        self._ActionBox = Box((1080, 100), BLUE, (0, GAME.SCREENHEIGHT-100))
+                            "Attacking": None, "Victory": None, "Defeat": None, "ActionDenied": None, "ApplyBuff": None, "Tutorial": None} #Dictionary containing frequently accessed objects
+        self._ActionBox = Box((1080, 100), BLUE, (0, GAME.SCREENHEIGHT-100)) #Blue menu buttons are placed on top of
         self._NextTurnButton = Button("Next Turn", BLACK, BLUE, ROYALBLUE, GAME.smallBoldFont, 940, 55, 110, 30)
         self._CardSelected = None #type: PlayerCountry or Buff
-        self._TempProductionQueue = []
-        self._Battle = battle
-        self._Turn = 1
-        self._ActionDeniedTimer = 0
-        self._ClickableStages = ["CountryOptions", "BuffOptions", "ChooseBuff", "Game", "ChooseAttack", "ChooseProduction"]
-        self._AttackInProgress = False
-        self._Combatants = () #type: tuple[Country, Country]
-        self.GunShotsPlaying = False
+        self._Battle = battle #Allows access to the battle object
+        self._Turn = 1 #Keeps track of turns
+        self._ActionDeniedTimer = 0 #Timer for action denied statement
+        self._ClickableStages = ["CountryOptions", "BuffOptions", "ChooseBuff", "Game", "ChooseAttack", "ChooseProduction"] #Stages where cards can be clicked
+        self._AttackInProgress = False #Flag for whether an attack is occurring
+        self._Combatants = () #type: tuple[Country, Country] #Current battle combatants
+        self.GunShotsPlaying = False #Flag set for if a sound is playing
         self.BattleWaitTime = 0
-        self.PlayerCardsDead = 0
+        self.PlayerCardsDead = 0 #Keeps track of cards that are dead
         self.EnemyCardsDead = 0
 
     def UpdateAndGetRenderables(self):
         renderables = [self._NextTurnButton]
-        renderables += self._cards
-        if self.PlayerCardsDead == 2:
+        renderables += self._cards #Sets renderables to the next turn button and the cards
+        if self.PlayerCardsDead == 2: #As player deaths are checked first, if all remaining countries die at once, both players lose
             self._Battle.BattleFinished(False)
         elif self.EnemyCardsDead == 2:
             self._Battle.BattleFinished(True)
 
-        for card in self._PlayerCountries:
+        for card in self._PlayerCountries: #If a country has been clicked on and the stage is the production stage, display a box containing the enemies unit composition
             if card.highlighted and self._Stage == "ChooseProduction":
                 card.DrawUnits()
-        if self._Stage == "Move":
+                break
+        if self._Stage == "Move": #Check the stage and call the appropriate function to get the renderables. Some also require the addition of the action box
             renderables += self.RenderMoveStage()
         elif self._Stage == "Flip":
             renderables += self.RenderFlipStage()
@@ -1917,13 +1925,13 @@ class StageManager:
         return renderables 
 
     def ButtonClicked(self, button: Button):
-        if self._Stage not in self._ClickableStages:
+        if self._Stage not in self._ClickableStages: #If the stage is not one that can be clicked in, return
             return
-        if button.string == "Next Turn" and not self._Stage.startswith("Actions"):
+        if button.string == "Next Turn" and not self._Stage.startswith("Actions"): #If the next turn button has been pressed, set the stage to NewTurn and call the appropriate function
             self._Stage = "NewTurn"
             self.NewTurn()
             return
-        elif button.string == "Attack":
+        elif button.string == "Attack": #Checks the button string and sets the appropriate stage or passes the selection on to the relevant function
             self._Stage = "ChooseAttack"
         elif button.string == "Build Units":
             self._Stage = "ChooseProduction"
@@ -1933,158 +1941,130 @@ class StageManager:
             self.HandleProductionChoices(button)
         
     def CardClicked(self, card: Card):
-        if self._Stage not in self._ClickableStages:
+        if self._Stage not in self._ClickableStages: #If the stage is not one that can be clicked in, return
             return
-        if isinstance(card, PlayerCountry):
-            if self._Stage == "ChooseBuff":
+        if isinstance(card, PlayerCountry): #Handle the click if it is a player country being selected
+            if self._Stage == "ChooseBuff": #If the current stage is choosing the country a buff should be applied to, apply the buff to the card
                 self.ApplyBuff(card)
             else:
-                self.CountryClicked(card)
-        elif isinstance(card, Buff) and card.player:
+                self.CountryClicked(card) #Otherwise call the function responsible for highlighting the card
+        elif isinstance(card, Buff) and card.player: #If it is a player buff, process that in the relevant function
             self.BuffClicked(card)
-        elif isinstance(card, EnemyCountry) and self._Stage == "ChooseAttack":
+        elif isinstance(card, EnemyCountry) and self._Stage == "ChooseAttack": #If we are in the choose attack stage and the card is an enemy, handle the attack choice
             self.HandleAttackChoice(card)
     
     def CountryClicked(self, country: Country):
-        if country.dead:
+        if country.dead: #If the country is dead, just return
             return
-        if country == self._CardSelected:
-            self.Reset()
+        self.Reset() #Reset the relevant card information
+        if country == self._CardSelected: #if the card has already been selected, move to the next stage
             self.NextStage()
         else:
-            self.Reset()
-            self._CardSelected = country
+            self._CardSelected = country #Set the card selected variable to the country, highlight the country and set the stage to show the country options
             self._CardSelected.highlighted = True
             self._Stage = "CountryOptions"
 
     def BuffClicked(self, buff: Buff):
-        if self._Stage not in self._ClickableStages:
+        if self._Stage not in self._ClickableStages: #If the stage is not one that can be clicked in, return
             return
-        if buff == self._CardSelected:
-            self.Reset()
+        self.Reset() #Reset the card information
+        if buff == self._CardSelected: #If the buff is already selected, reset the stage 
             self.NextStage()
         else:
-            self.Reset()
-            self._CardSelected = buff
+            self._CardSelected = buff #Sets the card selected to the buff and highlight the buff. Move the stage to the buff options
             buff.highlighted = True
             self._Stage = "BuffOptions"
     
     def ApplyBuff(self, country: PlayerCountry):
-        if country.prodpowerbuffadded and isinstance(self._CardSelected, ProductionBuff):
+        if isinstance(self._CardSelected, ProductionBuff) and self._CardSelected.applied: #Checks if the card has been applied already and is a production buff
+            self._Stage = "ActionDenied" #Denies the action if it is, to prevent people swapping the buff between countries every turn
+            return
+        if country.dead: #If the country is dead, the action is denied
             self._Stage = "ActionDenied"
             return
-        if country.dead:
-            self._Stage = "ActionDenied"
-            return
-        if self._CardSelected.country is not None:
+        if self._CardSelected.country is not None: #If the buff is applied to another country, remove it 
             self._CardSelected.country.RemoveBuff()
-        if country.Buff is not None:
+        if country.Buff is not None: #If the recipient country has a buff applied, remove it
             country.Buff.country = None
             country.RemoveBuff()
-        country.AddBuff(self._CardSelected)
-        if isinstance(self._CardSelected, Buff):
-            self._CardSelected.ApplyToCountry(country)
-        for country in self._PlayerCountries:
+        country.AddBuff(self._CardSelected)   #Add the buff to the country
+        self._CardSelected.ApplyToCountry(country)
+        for country in self._PlayerCountries: #De-highlight all countries
             country.highlighted = False
-        self.Reset()
+        self.Reset() #Reset card information
     
     def RenderApplyBuffOptions(self):
-        if self._Renderables["ApplyBuff"] is not None:
-            return self._Renderables["ApplyBuff"]
-        Text = TextBox("Select a country to buff!", WHITE, 20, GAME.SCREENHEIGHT-80, 60, 1040, font=GAME.boldFont)
-        tempList = [Text]
-        self._Renderables["ApplyBuff"] = tempList + self._PlayerCountries
-        
-        for country in self._PlayerCountries:
+        for country in self._PlayerCountries: #Highlights the valid countries
             country.highlighted = True
-        
+        if self._Renderables["ApplyBuff"] is not None: #Checks if the objects have been generated before. If so, returns the previously generated objects
+            return self._Renderables["ApplyBuff"]
+        Text = TextBox("Select a country to buff!", WHITE, 20, GAME.SCREENHEIGHT-80, 60, 1040, font=GAME.boldFont) #Generates renderables
+        tempList = [Text]
+        self._Renderables["ApplyBuff"] = tempList   
         return self._Renderables["ApplyBuff"]
 
     def RenderMoveStage(self):
-        if self._Renderables["Move"] is not None:
-            cards = self._Renderables["Move"]
-        else:
-            tempList = self._Countries + self._PlayerBuffs + self._EnemyBuffs
-            self._Renderables["Move"] = tempList
-            cards = self._Renderables["Move"]
-
         inProgress = False
-        for card in cards:
+        for card in self._cards: #Checks each card to see if they are in position and updates their movement
             if not card.inPos:
                 inProgress = True
             card.Update()
 
-        if not inProgress:
+        if not inProgress: #If every card is in place, move to the next stage
             self.NextStage()
         return []
 
     def RenderFlipStage(self):
-        if self._Renderables["Flip"] is not None:
-            cards = self._Renderables["Flip"]
-        else:
-            tempList = self._Countries + self._PlayerBuffs + self._EnemyBuffs
-            self._Renderables["Flip"] = tempList
-            cards = self._Renderables["Flip"]
         inProgress = False
-        for card in cards:
+        for card in self._cards: #Checks each card to see if they have flipped, or havent started flipping yet and updates them
             if not card.flipped:
                 inProgress = True
                 if not card.flipping:
                     card.Flip()
             card.Update()
-        if not inProgress:
+        if not inProgress: #Moves the stage onwards if every card has been flipped over
             self.NextStage()
         return []
 
     def RenderProductionOptions(self):
-        if self._Renderables["Production"] is not None:
-            pp = str(self._CardSelected.prodpower)
-            productiontext = Text("Production Power: " + pp, 5, 70)
-            return self._Renderables["Production"] + [productiontext]
-        infantry = Button("Infantry", BLACK, BLUE, ROYALBLUE, GAME.smallBoldFont, 5, 625, 170, 75, hintText="Cost: 75pp", highlighttext=["Attack: 4", "Defense: 12", "Siege Attack: 0", "Siege Defense: 2"])
-        tanks = Button("Tank", BLACK, BLUE, ROYALBLUE, GAME.smallBoldFont, 185, 625, 170, 75, hintText="Cost: 150pp", highlighttext=["Attack: 25", "Defense: 15", "Siege Attack: 5", "Siege Defense: 0"])
-        planes = Button("Plane", BLACK, BLUE, ROYALBLUE, GAME.smallBoldFont, 365, 625, 170, 75, hintText="Cost: 150pp", highlighttext=["Attack: 30", "Defense: 10", "Siege Attack: 0", "Siege Defense: 0"])
-        sdefense = Button("Defense Artillery", BLACK, BLUE, ROYALBLUE, GAME.smallBoldFont, 545, 625, 170, 75, hintText="Cost: 125pp", highlighttext=["Attack: 5", "Defense: 5", "Siege Attack: 20", "Siege Defense: 0"])
-        sattack = Button("Attack Artillery", BLACK, BLUE, ROYALBLUE, GAME.smallBoldFont, 725, 625, 170, 75, hintText="Cost: 125pp", highlighttext=["Attack: 5", "Defense: 5", "Siege Attack: 0", "Siege Defense: 20"])
-        forts = Button("Fortification", BLACK, BLUE, ROYALBLUE, GAME.smallBoldFont, 905, 625, 170, 75, hintText="Cost: 350pp", highlighttext=["+1 Fort", "Defense: 200"])
-        pp = str(self._CardSelected.prodpower)
-        productiontext = TextBox("Production Power: " + pp, BLACK, 5, self._ActionBox.rect.y-32, 30, 300, GAME.smallBoldFont, border=True)
-        tempList = [infantry, tanks, planes, sdefense, sattack, forts]
-        self._Renderables["Production"] = tempList
-        return self._Renderables ["Production"] + [productiontext]
+        if self._Renderables["Production"] is None: #If the objects have not been generated, generate them
+            infantry = Button("Infantry", BLACK, BLUE, ROYALBLUE, GAME.smallBoldFont, 5, 625, 170, 75, hintText="Cost: 75pp", highlighttext=["Attack: 4", "Defense: 12", "Siege Attack: 0", "Siege Defense: 2"])
+            tanks = Button("Tank", BLACK, BLUE, ROYALBLUE, GAME.smallBoldFont, 185, 625, 170, 75, hintText="Cost: 150pp", highlighttext=["Attack: 25", "Defense: 15", "Siege Attack: 5", "Siege Defense: 0"])
+            planes = Button("Plane", BLACK, BLUE, ROYALBLUE, GAME.smallBoldFont, 365, 625, 170, 75, hintText="Cost: 150pp", highlighttext=["Attack: 30", "Defense: 10", "Siege Attack: 0", "Siege Defense: 0"])
+            sdefense = Button("Defense Artillery", BLACK, BLUE, ROYALBLUE, GAME.smallBoldFont, 545, 625, 170, 75, hintText="Cost: 125pp", highlighttext=["Attack: 5", "Defense: 5", "Siege Attack: 20", "Siege Defense: 0"])
+            sattack = Button("Attack Artillery", BLACK, BLUE, ROYALBLUE, GAME.smallBoldFont, 725, 625, 170, 75, hintText="Cost: 125pp", highlighttext=["Attack: 5", "Defense: 5", "Siege Attack: 0", "Siege Defense: 20"])
+            forts = Button("Fortification", BLACK, BLUE, ROYALBLUE, GAME.smallBoldFont, 905, 625, 170, 75, hintText="Cost: 350pp", highlighttext=["+1 Fort", "Defense: 200"])
+            tempList = [infantry, tanks, planes, sdefense, sattack, forts]
+            self._Renderables["Production"] = tempList
+        pp = str(self._CardSelected.prodpower) #Get and render the cards remaining production power
+        productiontext = Text("Production Power: " + pp, 5, 70)
+        return self._Renderables ["Production"] + [productiontext] #Return it with the objects
         
     def RenderCountryOptions(self):
-        if self._Renderables["CountryOptions"] is not None:
-            return self._Renderables["CountryOptions"]
-        AttackButton = Button("Attack", BLACK, BLUE, ROYALBLUE, GAME.boldFont, GAME.SCREENWIDTH//8, 645, 150, 50)
-        ProductionButton = Button("Build Units", BLACK, BLUE, ROYALBLUE, GAME.smallBoldFont, ((GAME.SCREENWIDTH//8)*2)+100, 645, 150, 50)
-        self._Renderables["CountryOptions"] = [AttackButton, ProductionButton]
+        if self._Renderables["CountryOptions"] is None: #If the objects have not been generated, generate them. Return the objects
+            AttackButton = Button("Attack", BLACK, BLUE, ROYALBLUE, GAME.boldFont, GAME.SCREENWIDTH//8, 645, 150, 50)
+            ProductionButton = Button("Build Units", BLACK, BLUE, ROYALBLUE, GAME.smallBoldFont, ((GAME.SCREENWIDTH//8)*2)+100, 645, 150, 50)
+            self._Renderables["CountryOptions"] = [AttackButton, ProductionButton]
         return self._Renderables["CountryOptions"]
     
     def RenderBuffOptions(self):
-        if self._Renderables["BuffOptions"] is not None:
-            return self._Renderables["BuffOptions"]
-        ApplyBuffButton = Button("Apply", BLACK, BLUE, ROYALBLUE, GAME.boldFont, GAME.SCREENWIDTH//8, 645, 150, 50)
-        RemoveBuffButton = Button("Remove", BLACK, BLUE, ROYALBLUE, GAME.boldFont, (GAME.SCREENWIDTH//8)*2 + 100, 645, 150, 50)
-        self._Renderables["BuffOptions"] = [ApplyBuffButton, RemoveBuffButton]
+        if self._Renderables["BuffOptions"] is None: #If the objects have not been generated, generate them. Return the objects
+            ApplyBuffButton = Button("Apply", BLACK, BLUE, ROYALBLUE, GAME.boldFont, GAME.SCREENWIDTH//8, 645, 150, 50)
+            RemoveBuffButton = Button("Remove", BLACK, BLUE, ROYALBLUE, GAME.boldFont, (GAME.SCREENWIDTH//8)*2 + 100, 645, 150, 50)
+            self._Renderables["BuffOptions"] = [ApplyBuffButton, RemoveBuffButton]
         return self._Renderables["BuffOptions"]
         
     def RenderAttackOptions(self):
-        if self._Renderables["Attack"] is None:
+        for country in self._EnemyCountries: #Highlight the enemy countries as an indicator that they are the options
+            country.highlighted = True
+        if self._Renderables["Attack"] is None: 
             Text = TextBox("Select a country to attack!", WHITE, 20, GAME.SCREENHEIGHT-80, 60, 1040, font=GAME.boldFont)
             tempList = [Text]
             self._Renderables["Attack"] = tempList + self._EnemyCountries
-
-        for country in self._EnemyCountries:
-            country.highlighted = True
-        
         return self._Renderables["Attack"]
     
     def RenderTutorial(self):
-        if self._Renderables["Tutorial"] != None:
-            if self._Battle.messageQueue.IsEmpty():
-                self.NextStage()
-        else:
+        if self._Renderables["Tutorial"] is None: #If the objects have not been generated, generate them. Return the objects
             rect = pygame.Rect(GAME.SCREENWIDTH/2-125, GAME.SCREENHEIGHT/2-180, 250, 180)
             with open(resource_path("txt/t.txt"), "r") as f:
                 for line in f.readlines():
@@ -2092,6 +2072,9 @@ class StageManager:
                     self._Battle.messageQueue.Add(message)
                 f.close()
             self._Renderables["Tutorial"] = True
+
+        if self._Battle.messageQueue.IsEmpty():
+                self.NextStage()
         return []
 
     def PerformAttack(self):

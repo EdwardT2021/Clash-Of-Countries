@@ -31,6 +31,7 @@ An example of each country except defensive is shown on the board
 Who knows, one could await you at the end of this battle!
 There are many different types of BUFF, affecting all statistics
 These include FORTIFICATIONS, ATTACK, DEFENSE, SIEGE ATTACK, SIEGE DEFENSE AND PRODUCTION buffs
+PRODUCTION buffs can only be applied ONCE per turn
 Now you should be prepared for this battle! You can come back here and play the tutorial battle anytime, without this dialogue!
 And remember, to go back to the main menu, just press the cross in the corner!
 Good luck, and have fun!
