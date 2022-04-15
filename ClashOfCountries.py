@@ -1276,11 +1276,11 @@ class Game:
     def __init__(self):
         "Object containing necessary game data and initialisation procedure. Also deals with saving the game"
         pygame.init() #Sets up pygame window and module, sets the icon and caption
+        self.__screen = pygame.display.set_mode((self.SCREENWIDTH, self.SCREENHEIGHT)) #This is the main screen the user sees
         pygame.display.set_caption("Clash Of Countries") 
         pygame.display.set_icon(pygame.image.load(resource_path("clashofcountries.ico")).convert_alpha())
         self.SCREENWIDTH = 1080
         self.SCREENHEIGHT = 720
-        self.__screen = pygame.display.set_mode((self.SCREENWIDTH, self.SCREENHEIGHT)) #This is the main screen the user seess
         self.screen = pygame.Surface((self.SCREENWIDTH, self.SCREENHEIGHT)).convert_alpha() #This is the screen other objects blit to
         self.FPS = 65 #Sets the number of frames per second, loads the fonts
         self.boldFont = pygame.font.Font(resource_path("fonts/rexlia.otf"), 24)
