@@ -1847,8 +1847,8 @@ class TutorialBattle(Battle):
 
             if r.random() > 0.5: #50% chance for the enemy to attack, picks a random country that isnt dead to attack
                 enemyCard = self.playerCountries[r.randint(0, len(self.playerCountries)-1)]
-                while enemyCard.dead:
-                    enemyCard = self.playerCountries[r.randint(0, len(self.playerCountries)-1)]
+                if enemyCard.dead:
+                    enemyCard = None
             
             templist = [[hash(country), None], country.UnitsBought.copy(), None] #Builds the action list for the country
             if enemyCard is not None:
@@ -1992,6 +1992,8 @@ class StageManager:
             country.RemoveBuff()
         country.AddBuff(self._CardSelected)   #Add the buff to the country
         self._CardSelected.ApplyToCountry(country)
+        if isinstance(self._CardSelected, ProductionBuff):
+            self._CardSelected.applied = True
         for country in self._PlayerCountries: #De-highlight all countries
             country.highlighted = False
         self.Reset() #Reset card information
@@ -2244,6 +2246,13 @@ class StageManager:
             card = self._EnemyCountries[i]
             if card.dead:
                 continue
+            attack = actions[0]
+            attack[0] = card
+            defender = None
+            for j in self._PlayerCountries:
+                if attack[1] == hash(j):
+                    defender = j
+            attack[1] = defender
             card.army.AddInfantry(actions[1][0])
             card.army.AddTanks(actions[1][1])
             card.army.AddPlanes(actions[1][2])
@@ -2265,9 +2274,10 @@ class StageManager:
         for card in self._Countries:
             card.prodpower = card.factories * card.production
             card.prodpowerbuffadded = False
-            if card.Buff is not None and card.Buff.statAffected == "Production":
-                card.prodpower += card.Buff.change * card.factories
-                card.prodpowerbuffadded = True
+            if card.Buff is not None and isinstance(card.Buff, ProductionBuff):
+                card.Buff.applied = False
+                card.Buff = None
+                card.Buff.country = None
             
         self._AttackTracker.NewTurn(attacks, self._Battle.playerFirst, self._PlayerCountries, self._EnemyCountries)
         self.NextStage()
@@ -2489,24 +2499,13 @@ class AttackTracker:
     
     def AddAttackToQueue(self, attacker: Country, defender: Country):
         try:
-            self.CurrentTurnAttacks.Add((hash(attacker), hash(defender)))
+            self.CurrentTurnAttacks.Add((attacker, defender))
             return True
         except er.ActionNotUniqueError:
             return False
         
     def NewTurn(self, enemyAttacks: list, playerFirst: bool, playerCountries: list[Country], enemyCountries: list[Country]):
         playerattacks = self.GetAttacksThisTurn()
-        for i in playerattacks:
-            if i[0] == hash(playerCountries[0]):
-                for j in enemyCountries:
-                    if hash(j) == i[1]:
-                        playerCountries[0].Opponent = j
-                        break
-            elif i[0] == hash(playerCountries[1]):
-                for j in enemyCountries:
-                    if hash(j) == i[1]:
-                        playerCountries[0].Opponent = j
-                        break
         for i in enemyAttacks:
             if i[0] == hash(enemyCountries[0]):
                 for j in playerCountries:
@@ -2518,6 +2517,8 @@ class AttackTracker:
                     if hash(j) == i[1]:
                         enemyCountries[0].Opponent = j
                         break
+        for i in playerattacks:
+            i[0].Opponent = i[1]
         playerOrderedAttacks = []
         enemyOrderedAttacks = []
         for i in playerCountries:
@@ -2527,14 +2528,14 @@ class AttackTracker:
             if i.Opponent is not None:
                 enemyOrderedAttacks.append([i, i.Opponent])
         if playerFirst:
-            self.Queue.AddAttacks(playerOrderedAttacks)
-            self.Queue.AddAttacks(enemyOrderedAttacks)
+            attacks = playerOrderedAttacks + enemyOrderedAttacks
         else:
-            self.Queue.AddAttacks(enemyOrderedAttacks)
-            self.Queue.AddAttacks(playerOrderedAttacks)
+            attacks = enemyOrderedAttacks + playerOrderedAttacks
+        print(attacks)
+        self.Queue.AddAttacks(attacks)
         self.CurrentTurnAttacks = HashTable(10)
     
-    def GetAttacksThisTurn(self) -> list[tuple]:
+    def GetAttacksThisTurn(self) -> list[tuple[Country, Country]]:
         attacks = list(self.CurrentTurnAttacks)
         return attacks
     
