@@ -1688,20 +1688,20 @@ class Battle:
             else:
                 self.PlayerActions[i][2] = hash(self.playerCountries[i].Buff)
             self.PlayerActions[i][1] = self.playerCountries[i].UnitsBought
-        if self.playerFirst: #If you are the first player, send a message saying you are ready to send changes and wait for the enemy to also be ready
+        if self.playerFirst: #If you are the first player, wait for the ready signal then respond with your own 
+            data = CONN.Receive() #If you arent the first player send a message saying you are ready to send changes and wait for the enemy to also be ready
+            while data["Command"] != "READY" and data["Command"] != "RESIGN": 
+                for event in GAME.getevent():
+                    pass
+                data = CONN.Receive()
+            CONN.SendToPlayer("READY", self.enemy.key) 
+        else:
             CONN.SendToPlayer("READY", self.enemy.key)
             data = CONN.Receive()
             while data["Command"] != "READY" and data["Command"] != "RESIGN": #Checks if the enemy has resigned or is ready to swap actions
                 for event in GAME.getevent():
                     pass
                 data = CONN.Receive()
-        else:
-            data = CONN.Receive() #If you arent the first player, waits for the ready signal then responds with your own
-            while data["Command"] != "READY" and data["Command"] != "RESIGN": 
-                for event in GAME.getevent():
-                    pass
-                data = CONN.Receive()
-            CONN.SendToPlayer("READY", self.enemy.key) 
         
         if data["Command"] == "RESIGN": #If the enemy has resigned, end the loading screen and win the battle
             t.quit()
