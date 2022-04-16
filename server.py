@@ -371,7 +371,7 @@ class Server: #Class containing server methods and attributes
         try:
             data = conn.recv(2048)
         except Exception as e:
-            if e == socket.errorTab[10054] or e == socket.errorTab[10053]:
+            if str(e) == socket.errorTab[10054] or str(e) == socket.errorTab[10053]:
                 return "DISCONNECT", None
             return None, None
         new = rsa.decrypt(data, self.__privkey)
