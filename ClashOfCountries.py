@@ -1178,7 +1178,6 @@ class Connection:
             #If first, act as a server to accept the incoming connection and use the socket that spawns from that as the main one
             connected = False
             ip = s.gethostbyname(s.gethostname())
-            print(ip)
             self.SOCK.bind((ip, 11036))
             self.SOCK.listen()
             while not connected:
@@ -1665,7 +1664,6 @@ class Battle:
             data2 = CONN.Receive()
         CONN.SendToPlayer("RECEIVED", self.enemy.key) #Sends back a message saying this has been received, acting as a clear-to-send
         temp = [data["Args"][0], data2["Args"][0]] #Combines the actions into a single iterable
-        print(temp)
         return temp
 
     def SendPlayerActions(self): 
@@ -2084,10 +2082,6 @@ class StageManager:
         for card in self._cards:
             card.highlighted = False
         if not self._AttackInProgress:
-            try:
-                print(self._AttackTracker.Queue)
-            except:
-                pass
             attack = self._AttackTracker.Queue.GetAttack()
             if attack == (None):
                 self._AttackTracker.Queue = AttackQueue()
@@ -2671,10 +2665,6 @@ class AttackQueue:
     
     def __len__(self):
         return len(self.attacks)
-    
-    def __repr__(self):
-        for i in self.attacks:
-            print(i)
 
 ##################################################################################################################################
 

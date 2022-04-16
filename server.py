@@ -424,7 +424,6 @@ class Server: #Class containing server methods and attributes
             failed = True
             while failed:
                 self.send("LOGIN", client, key) #Sends login request
-                print("login request sent")
                 received = False
                 while not received:
                     try:
