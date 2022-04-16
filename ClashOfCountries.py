@@ -1665,6 +1665,7 @@ class Battle:
             data2 = CONN.Receive()
         CONN.SendToPlayer("RECEIVED", self.enemy.key) #Sends back a message saying this has been received, acting as a clear-to-send
         temp = [data["Args"][0], data2["Args"][0]] #Combines the actions into a single iterable
+        print(temp)
         return temp
 
     def SendPlayerActions(self): 
@@ -2092,24 +2093,6 @@ class StageManager:
                 self._AttackTracker.Queue = AttackQueue()
                 self.NextStage()
                 return []
-            for country in self._PlayerCountries:
-                if hash(country) == attack[0]:
-                    attack[0] = country
-                    break
-            for country in self._EnemyCountries:
-                if hash(country) == attack[0]:
-                    attack[0] = country
-                    break
-            if isinstance(attack[0], EnemyCountry):
-                for country in self._PlayerCountries:
-                    if hash(country) == attack[1]:
-                        attack[1] = country
-                        break
-            elif isinstance(attack[0], PlayerCountry):
-                for country in self._EnemyCountries:
-                    if hash(country) == attack[1]:
-                        attack[1] = country
-                        break
             self._Combatants = attack
             if attack[0].dead:
                 rect = pygame.rect.Rect(GAME.SCREENWIDTH/2-125, GAME.SCREENHEIGHT/2-55, 250, 110)
@@ -2517,22 +2500,34 @@ class AttackTracker:
         playerattacks = self.GetAttacksThisTurn()
         for i in playerattacks:
             if i[0] == hash(playerCountries[0]):
-                playerCountries[0].Opponent = i[1]
+                for j in enemyCountries:
+                    if hash(j) == i[1]:
+                        playerCountries[0].Opponent = j
+                        break
             elif i[0] == hash(playerCountries[1]):
-                playerCountries[1].Opponent = i[1]
+                for j in enemyCountries:
+                    if hash(j) == i[1]:
+                        playerCountries[0].Opponent = j
+                        break
         for i in enemyAttacks:
             if i[0] == hash(enemyCountries[0]):
-                enemyCountries[0].Opponent = i[1]
+                for j in playerCountries:
+                    if hash(j) == i[1]:
+                        enemyCountries[0].Opponent = j
+                        break
             elif i[0] == hash(enemyCountries[1]):
-                enemyCountries[1].Opponent = i[1]
+                for j in playerCountries:
+                    if hash(j) == i[1]:
+                        enemyCountries[0].Opponent = j
+                        break
         playerOrderedAttacks = []
         enemyOrderedAttacks = []
         for i in playerCountries:
             if i.Opponent is not None:
-                playerOrderedAttacks.append([hash(i), i.Opponent])
+                playerOrderedAttacks.append([i, i.Opponent])
         for i in enemyCountries:
             if i.Opponent is not None:
-                enemyOrderedAttacks.append([hash(i), i.Opponent])
+                enemyOrderedAttacks.append([i, i.Opponent])
         if playerFirst:
             self.Queue.AddAttacks(playerOrderedAttacks)
             self.Queue.AddAttacks(enemyOrderedAttacks)
@@ -2659,7 +2654,7 @@ class AttackQueue:
     def __init__(self):
         self.attacks = LinkedList()
 
-    def GetAttack(self) -> None or tuple:
+    def GetAttack(self) -> None or tuple[Country, Country]:
         return self.Pop()
     
     def Pop(self):
