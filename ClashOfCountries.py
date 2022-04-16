@@ -1177,7 +1177,7 @@ class Connection:
         if first:
             #If first, act as a server to accept the incoming connection and use the socket that spawns from that as the main one
             connected = False
-            ip = self.SOCK.getsockname()[0]
+            ip = s.gethostbyname(s.gethostname())
             print(ip)
             self.SOCK.bind((ip, 11036))
             self.SOCK.listen()
