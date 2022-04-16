@@ -1684,7 +1684,10 @@ class Battle:
         "Get the enemy players choices and send off your own"
         t = Thread(target=LoadScreen, args=["Waiting for enemy..."]) #Begins loading screen
         for i in range(2): #Fills the template for action details
-            self.PlayerActions[i][2] = hash(self.playerCountries[i].Buff)
+            if self.playerCountries[i].Buff is None:
+                self.PlayerActions[i][2] = None
+            else:
+                self.PlayerActions[i][2] = hash(self.playerCountries[i].Buff)
             self.PlayerActions[i][1] = self.playerCountries[i].UnitsBought
         if self.playerFirst: #If you are the first player, send a message saying you are ready to send changes and wait for the enemy to also be ready
             CONN.SendToPlayer("READY", self.enemy.key)
@@ -2248,6 +2251,7 @@ class StageManager:
             card.army.AddDefenseArtillery(actions[1][3])
             card.army.AddAttackArtillery(actions[1][4])
             card.fortifications += actions[1][5]
+            buff = None
             if actions[2] != None:
                 if not isinstance(actions[2], Buff):
                     for i in self._EnemyBuffs:
@@ -2257,7 +2261,8 @@ class StageManager:
                             break
                 else:
                     buff = actions[2]
-                card.AddBuff(buff)
+                if buff is not None:
+                    card.AddBuff(buff)
         for card in self._Countries:
             card.prodpower = card.factories * card.production
             card.prodpowerbuffadded = False
