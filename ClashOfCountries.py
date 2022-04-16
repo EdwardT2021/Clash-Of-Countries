@@ -20,7 +20,7 @@ ROYALBLUE = "#aacfdd"
 BLACK = "#000000"
 WHITE = "#ffffff"
 
-AUTH = str(sha256("121212".encode("ascii"), usedforsecurity=True).digest())
+AUTH = str(sha256("121212".encode("ascii"), usedforsecurity=True).digest()) #A hash used as an authorisation code for sending and receiving messages
 
 # This is the multiplier for how the velocity of the card should decrease every time the card is updated.
 # This results in an exponential graph of the order y = 1/x
@@ -29,6 +29,7 @@ GRAVITY = 0.95
 # The below function is necessary to allow your one file executable program to find the location of its assets.
 # It uses _MEIPASS which is a temporary folder for pyinstaller to create to store assets in upon loading the executable.
 # This function checks for the temporary folder, and if it cannot be found, sets the base path to the path of the executable.
+# This function can be found in the documentation for pyinstaller
 def resource_path(relative_path):
     "Gets the path for the resource relative to the base folder. Allows for assets to work within an executable"
     try:
@@ -40,9 +41,10 @@ def resource_path(relative_path):
 
 #The below function is a custom 32 bit hash generator that is NOT CRYPTOGRAPHICALLY SECURE used for quick object comparisons 
 def Hash(string: str) -> int:
+    "Get a 32 bit hash for a string"
     hashnum = 0
     for s in string:
-        hashnum = (hashnum*607 ^ ord(s)*409) & 0xFFFFFFFF
+        hashnum = (hashnum*607 ** ord(s)*409) & 0xFFFFFFFF
     return hashnum
 
 class Card(pygame.sprite.Sprite):
@@ -511,7 +513,7 @@ class LinearBuff(Buff):
         "Overload of the base method, but calls that base method and adds upon it"
         Buff.SetDetails(self)
         if isinstance(self, ProductionBuff):
-            change = 50*self.change
+            change = 50*self.change #50 is the number of factories each country has. This is the equivalent of adding self.change to the production multiplier
         else:
             change = self.change
         change = "+" + str(change) + f" {self.statAffected}" 
@@ -2069,7 +2071,7 @@ class StageManager:
         return self._Renderables["Attack"]
     
     def RenderTutorial(self):
-        if self._Renderables["Tutorial"] is None: #If the objects have not been generated, generate them. Return the objects
+        if self._Renderables["Tutorial"] is None: #If the objects have not been generated, generate them. Add the tutorial messages to the queue
             rect = pygame.Rect(GAME.SCREENWIDTH/2-125, GAME.SCREENHEIGHT/2-180, 250, 180)
             with open(resource_path("txt/t.txt"), "r") as f:
                 for line in f.readlines():
@@ -2078,20 +2080,20 @@ class StageManager:
                 f.close()
             self._Renderables["Tutorial"] = True
 
-        if self._Battle.messageQueue.IsEmpty():
+        if self._Battle.messageQueue.IsEmpty(): #Checks every frame if the messages have been displayed and the queue is empty, and if so moves the game to the next stage
                 self.NextStage()
         return []
 
     def PerformAttack(self):
-        for card in self._cards:
-            card.highlighted = False
-        if not self._AttackInProgress:
-            attack = self._AttackTracker.Queue.GetAttack()
-            if attack == (None):
+        if not self._AttackInProgress: #Check if an attack has begun
+            for card in self._cards: #Ensure all cards arent highlighted
+                card.highlighted = False
+            attack = self._AttackTracker.Queue.GetAttack() #If not, get an attack
+            if attack == (None): #If the attack is empty, reset the attack queue and move the game on
                 self._AttackTracker.Queue = AttackQueue()
                 self.NextStage()
                 return []
-            self._Combatants = attack
+            self._Combatants = attack #Otherwise, set the combatants, and check both cards are able to be attacked. Generate the appropriate game message if not
             if attack[0].dead:
                 rect = pygame.rect.Rect(GAME.SCREENWIDTH/2-125, GAME.SCREENHEIGHT/2-55, 250, 110)
                 message = f"{attack[0].name} cannot attack {attack[1].name} as {attack[0].name} has been destroyed!"
@@ -2104,39 +2106,39 @@ class StageManager:
                 message = GameMessage(message, GAME.boldFont, WHITE, rect, 60)
                 self._Battle.messageQueue.Add(message)
                 return []
-            GAME.SFXPlayer.play(GAME.MarchingSound, loops=3)
-            self.GenerateDaggers(attack[0], attack[1])
-            self._AttackInProgress = True
+            GAME.SFXPlayer.play(GAME.MarchingSound, loops=3) #Play the attack marching sound, 3 times
+            self.GenerateGuns(attack[0], attack[1]) #Generate the Guns as a visual representation of the attack
+            self._AttackInProgress = True #Set the attack in progress flag, and the wait time for the next attack after the sound has stopped playing
             self.BattleWaitTime = 120
-        for dagger in self._Renderables["Attacking"]:
-            dead = dagger.Update()
+        for Gun in self._Renderables["Attacking"]: #Iterates through the Guns and updates them. If they reached their target, remove them
+            dead = Gun.Update()
             if dead:
-                self._Renderables["Attacking"].remove(dagger)
-        if self._Renderables["Attacking"] == []:
+                self._Renderables["Attacking"].remove(Gun)
+        if self._Renderables["Attacking"] == []: #If the dictionary is empty, all Guns have reached their targets, so play gunshots and wait for an interval
             if not self.GunShotsPlaying:
                 GAME.SFXPlayer.play(GAME.BattleSound[r.randint(0, 2)])
                 self.GunShotsPlaying = True
             self.BattleWaitTime -= 1
-            if self.BattleWaitTime <= 0:
+            if self.BattleWaitTime <= 0: #Once the interval has passed, set the attack in progress flag to false, dehighlight all countries
                 self._AttackInProgress = False
                 for card in self._Countries:
                     card.highlighted = False
-                self.GunShotsPlaying = False
-                self.CalculateBattleOutcome() 
+                self.GunShotsPlaying = False #Reset the gun shots playing flag
+                self.CalculateBattleOutcome() #Calculate the result of the battle
         return self._Renderables["Attacking"]
 
-    def GenerateDaggers(self, attacker: Country, defender: Country):
-        attacker.highlighted = True
+    def GenerateGuns(self, attacker: Country, defender: Country):
+        attacker.highlighted = True #highlight the combatant countries
         defender.highlighted = True
-        self._Renderables["Attacking"] = []
-        for i in range(3):
+        self._Renderables["Attacking"] = [] #Ensure the attacking renderables are empty
+        for i in range(3): #Create three Guns, evenly spaced, starting at the attacker and with a final position at the defender
             starty = attacker.rect.centery-100+50*i
             endy = defender.rect.centery-100+50*i
-            dagger = Dagger(attacker, defender, starty, endy)
-            self._Renderables["Attacking"].append(dagger)
+            Guns = Gun(attacker, defender, starty, endy)
+            self._Renderables["Attacking"].append(Guns)
     
     def NextStage(self):
-        if self._Stage == "Move":
+        if self._Stage == "Move": #Checks current stage and moves it to the next appropriate stage
             self._Stage = "Flip"
         elif self._Stage == "Flip":
             GAME.Shake(10)
@@ -2153,48 +2155,48 @@ class StageManager:
             self._Stage = "Game"
     
     def CalculateBattleOutcome(self):
-        attacker, defender = self._Combatants
-        if isinstance(attacker, EnemyCountry):
+        attacker, defender = self._Combatants #Get the combatants
+        if isinstance(attacker, EnemyCountry): #Ensure the Enemy countries army can be seen via the getter method
             attacker.army.ResetStart()
         elif isinstance(defender, EnemyCountry):
             defender.army.ResetStart()
-        siegeAttack = attacker.army.GetSiegeAttack()
+        siegeAttack = attacker.army.GetSiegeAttack() #Get the siege attack/defense of each country and remove 1 siege attack for every 3 siege defense
         siegeDefense = defender.army.GetSiegeDefense()
         siegeAttack -= siegeDefense // 3
-        newForts = defender.fortifications - siegeAttack // 60
-        attacker.army.siegeArtillery = max(attacker.army.siegeArtillery - defender.fortifications, 0)
+        newForts = defender.fortifications - siegeAttack // 60 #
+        attacker.army.siegeArtillery = max(attacker.army.siegeArtillery - defender.fortifications, 0) #Take away one unit of siege artillery for every fort destroyed
         defender.fortifications = newForts
-        if defender.fortifications < 0:
+        if defender.fortifications < 0: #Ensure the fort number is not negative
             defender.fortifications = 0
-        attack = attacker.army.GetAttackPower()
+        attack = attacker.army.GetAttackPower() #Get the attack and defense power
         defense = defender.army.GetDefensePower()
-        attack -= defender.fortifications * 200
-        attack -= defense
-        if attack <= 0:
+        attack -= defender.fortifications * 200 #Take 200 off the attack power for every remaining fort
+        attack -= defense #Take the defense away from the attack
+        if attack <= 0: #If the defense was greater or equal to the attack, the attacker lost. If it was less, the attacker won
             victory = False
         else:
             victory = True
-        rect = pygame.rect.Rect(GAME.SCREENWIDTH//2-125, GAME.SCREENHEIGHT//2-55, 250, 110)
+        rect = pygame.rect.Rect(GAME.SCREENWIDTH//2-125, GAME.SCREENHEIGHT//2-55, 250, 110) #Generate a rect object for the message to go in
         if victory:
-            townLoss = round(attack / 25)
+            townLoss = round(attack / 25) #Take 1 town away for every 25 attack remaining
             defender.towns -= townLoss
-            defender.army.Defeat()
+            defender.army.Defeat() #Call the appropriate functions on the countries
             attacker.army.Victory()
-            message = f"{defender.name} was defeated by {attacker.name}! {townLoss} towns were lost!"
+            message = f"{defender.name} was defeated by {attacker.name}! {townLoss} towns were lost!" #Set the message
             if defender.towns <= 0:
-                defender.towns = 0
+                defender.towns = 0 #Check whether the country has been defeated, and add 1 to the relevant dead card counter
                 defender.Die()
                 if isinstance(defender, EnemyCountry):
                     self.EnemyCardsDead += 1
                 elif isinstance(defender, PlayerCountry):
                     self.PlayerCardsDead += 1
-                message = f"{defender.name} was defeated by {attacker.name}! {defender.name} is totally destroyed!"
+                message = f"{defender.name} was defeated by {attacker.name}! {defender.name} is totally destroyed!" #Set message
         else:
             message = f"{defender.name} successfully defended against {attacker.name}!"
-            defender.army.Victory()
+            defender.army.Victory() #Call relevant functions
             attacker.army.Defeat()
         message = GameMessage(message, GAME.smallBoldFont, WHITE, rect, 70)
-        self._Battle.messageQueue.Add(message)
+        self._Battle.messageQueue.Add(message) #Add the message to the queue and then allow the enemy army values to be visible, before updating the cards visuals
         if isinstance(attacker, EnemyCountry):
             attacker.army.ResetStart()
         else:
@@ -2205,62 +2207,62 @@ class StageManager:
         attacker.Opponent = None
 
     def HandleAttackChoice(self, country: Country):
-        if self._AttackTracker.CheckCountry(self._CardSelected):
+        if self._AttackTracker.CheckCountry(self._CardSelected): #if the card has already got an attack in the queue, deny it
             self.ActionDenied()
             return
-        self._AttackTracker.AddAttackToQueue(self._CardSelected, country)
+        self._AttackTracker.AddAttackToQueue(self._CardSelected, country) #Otherwise, add the attack to the queue, and set the player actions space to the opponent
         pos = self._Battle.playerCountries.index(self._CardSelected)
-        self._Battle.PlayerActions[pos][0][1] = hash(country)
-        for card in self._EnemyCountries:
+        self._Battle.PlayerActions[pos][0][1] = country
+        for card in self._EnemyCountries: #Dehighlight the enemy countries
             card.highlighted = False
-        self.Reset()
+        self.Reset() #Reset card info
 
     def HandleProductionChoices(self, button: Button):
-        self._CardSelected.PurchaseUnit(button.string)
+        self._CardSelected.PurchaseUnit(button.string) #Pass the unit bought on to the card
 
     def HandleBuffOptions(self, button: str):
-        if button == "Apply":
+        if button == "Apply": #if the apply button is pressed, move to the stage for selecting the country to buff
             self._Stage = "ChooseBuff"
-        elif button == "Remove":
+        elif button == "Remove": #if the remove button is pressed, call the remove buff function
             self.RemoveBuff()
     
     def RemoveBuff(self):
         if isinstance(self._CardSelected, Buff):
-            if self._CardSelected.country is None:
+            if self._CardSelected.country is None: #if the buff is not applied, return
                 return
-            self._CardSelected.country.RemoveBuff()
+            self._CardSelected.country.RemoveBuff() #Remove the buff from the country, set the card visuals and remove the country from the buff 
             self._CardSelected.country.SetDetails()
             self._CardSelected.country = None
     
     def NewTurn(self):
-        self._Turn += 1
-        self._CardSelected = None
+        self._Turn += 1 #increment the turn counter
+        self._CardSelected = None #Reset the card selected and production renderables
         self._Renderables["Production"] = None
         messageRect = pygame.rect.Rect(GAME.SCREENWIDTH//2-60, GAME.SCREENHEIGHT//2-20, 120, 40)
         message = GameMessage(f"Turn {self._Turn}", GAME.boldFont, WHITE, messageRect, 100)
-        self._Battle.messageQueue.Add(message)
-        enemyActions = self._Battle.GetEnemyActions()
+        self._Battle.messageQueue.Add(message) #Add a message to the queue displaying the turn number 
+        enemyActions = self._Battle.GetEnemyActions() #Get the enemy actions
         attacks = []
-        for i in range(len(self._EnemyCountries)):
-            actions = enemyActions[i]
+        for i in range(len(self._EnemyCountries)): #Iterate through the indices of the countries
+            actions = enemyActions[i] #Get the actions for the country and the country
             card = self._EnemyCountries[i]
-            if card.dead:
+            if card.dead: #if the country is dead, continue
                 continue
-            attack = actions[0]
-            attack[0] = card
+            attack = actions[0] #Get the attack, which is a tuple of hashes
+            attack[0] = card #Set the first to be the country
             defender = None
-            for j in self._PlayerCountries:
+            for j in self._PlayerCountries: #Find the defender if there is one, otherwise set it to None
                 if attack[1] == hash(j):
                     defender = j
             attack[1] = defender
-            card.army.AddInfantry(actions[1][0])
+            card.army.AddInfantry(actions[1][0]) #Add the troop numbers and fortifications
             card.army.AddTanks(actions[1][1])
             card.army.AddPlanes(actions[1][2])
             card.army.AddDefenseArtillery(actions[1][3])
             card.army.AddAttackArtillery(actions[1][4])
             card.fortifications += actions[1][5]
             buff = None
-            if actions[2] != None:
+            if actions[2] != None: #if a buff is present, find it and add it
                 if not isinstance(actions[2], Buff):
                     for i in self._EnemyBuffs:
                         if actions[2] == hash(i):
@@ -2271,38 +2273,38 @@ class StageManager:
                     buff = actions[2]
                 if buff is not None:
                     card.AddBuff(buff)
-        for card in self._Countries:
+        for card in self._Countries: #Reset production values and remove production buffs 
             card.prodpower = card.factories * card.production
             card.prodpowerbuffadded = False
             if card.Buff is not None and isinstance(card.Buff, ProductionBuff):
                 card.Buff.applied = False
-                card.Buff = None
                 card.Buff.country = None
+                card.Buff = None
             
-        self._AttackTracker.NewTurn(attacks, self._Battle.playerFirst, self._PlayerCountries, self._EnemyCountries)
-        self.NextStage()
+        self._AttackTracker.NewTurn(attacks, self._Battle.playerFirst, self._PlayerCountries, self._EnemyCountries) #Call the function that handles the new turn on the attack tracker
+        self.NextStage() #Move the game to the next stage
     
     def ActionDenied(self):
-        if self._Renderables["ActionDenied"] is not None:
-            self._ActionDeniedTimer -= 1
+        if self._Renderables["ActionDenied"] is not None: 
+            self._ActionDeniedTimer -= 1 #Every frame, if the function has been called already, reduce the timer by 1. If the timer hits 0, reset the stage and cards and action denied objects
             if self._ActionDeniedTimer <= 0:
                 self._ActionDeniedTimer = 0
                 self._Renderables["ActionDenied"] = None
                 self.Reset()
             return []
-        rect = pygame.rect.Rect(GAME.SCREENWIDTH//2 - 130, GAME.SCREENHEIGHT//2 - 20, 260, 40)
-        deniedMessage = GameMessage("Action not available!", GAME.smallBoldFont, WHITE, rect, 120)
+        rect = pygame.rect.Rect(GAME.SCREENWIDTH//2 - 130, GAME.SCREENHEIGHT//2 - 20, 260, 40) #generate the rect object for the message
+        deniedMessage = GameMessage("Action not available!", GAME.smallBoldFont, WHITE, rect, 120) #generate the message and add it to the queue
         self._Battle.messageQueue.Add(deniedMessage)
-        self._ActionDeniedTimer = 120
-        self._Stage = "ActionDenied"
+        self._ActionDeniedTimer = 120 #Set the timer
+        self._Stage = "ActionDenied" #Set the stage
         self._Renderables["ActionDenied"] = []
         return []
 
-    def GetTurn(self):
+    def GetTurn(self) -> int:
         return self._Turn
 
     def Reset(self):
-        self._Stage = "Game"
+        self._Stage = "Game" #Resets the stage, dehighlights all cards and resets card selected
         self._CardSelected = None
         for card in self._cards:
             card.highlighted = False
@@ -2310,7 +2312,7 @@ class StageManager:
 ################################################################################################################
 
 class TextBox:
-
+    "Base class for textboxes"
     def __init__(self, Text: str, textColour: str, left: int, top: int, height: int, width: int, font: pygame.font.Font, border=False):
         self.string = str(Text)
         self.left = float(left)
@@ -2320,13 +2322,12 @@ class TextBox:
         self.rect = pygame.Rect(self.left, self.top, self.width, self.height)
         self.textColour = textColour
         self.font = font
-        self.DrawTime = time()
         self.border = border
         
 
     def Draw(self): #Not my function, obtained and modified from www.pygame.org/wiki/TextWrap
         if self.border:
-            border = pygame.Rect(self.rect.x-2, self.rect.y-2, self.rect.width+4, self.rect.height+4)
+            border = pygame.Rect(self.rect.x-2, self.rect.y-2, self.rect.width+4, self.rect.height+4) #Generate a border if the flag is set
             pygame.draw.rect(GAME.screen, BLACK, border)
         rect = self.rect
         y = rect.top
@@ -2362,14 +2363,14 @@ class TextBox:
 
     
     def ChangeText(self, newString: str):
-        self.string = newString
+        self.string = newString #Change the text in the textbox
         
 #################################################################################################################
 
 class GameBar:
-
+    "Class responsible for managing the bar at the top of the battle screen and the timer"
     def __init__(self, player: Player, enemy: Player, playerfirst: bool):
-        self.startTime = time()
+        self.startTime = time() #get the current time
         self.time = 0
         image = pygame.image.load(resource_path("art/GameBar.png")).convert_alpha()
         self.flippedImage = pygame.Surface((1080, 50))
@@ -2377,7 +2378,7 @@ class GameBar:
         self.border = pygame.Rect(0, 0, 1080, 52)
         self.player = player
         self.enemy = enemy
-        playertext = player.Text()
+        playertext = player.Text() #Get the text for each player and add the numbers corresponding to which person goes first
         enemytext = enemy.Text()
         if playerfirst:
             playertext = "1. " + playertext
@@ -2385,31 +2386,21 @@ class GameBar:
         else:
             playertext = "2. " + playertext
             enemytext = "1. " + enemytext
-        self.playertext = GAME.boldFont.render(playertext, True, ROYALBLUE)
+        self.playertext = GAME.boldFont.render(playertext, True, ROYALBLUE) #Renders the text and blits to the image
         self.enemytext = GAME.boldFont.render(enemytext, True, ROYALBLUE)
         self.flippedImage.blit(self.playertext, (15, 8))
         self.flippedImage.blit(self.enemytext, (610, 8))
-        self.timeBox = pygame.Rect((GAME.SCREENWIDTH/2)-37.5, 55, 75, 25)
+        self.timeBox = pygame.Rect((GAME.SCREENWIDTH/2)-37.5, 55, 75, 25) #Generates the boxes for the turn number and timer
         self.timeBorder = pygame.Rect((GAME.SCREENWIDTH/2)-39.5, 53, 79, 29)
         self.TurnBox = pygame.Rect((GAME.SCREENWIDTH/2)-50, 82, 100, 25)
         self.TurnBorder = pygame.Rect((GAME.SCREENWIDTH/2)-52, 80, 104, 29)
     
     def Draw(self, turn: int):
-        self.time = int(time() - self.startTime)
-        seconds = self.time % 60
-        minutes = self.time // 60
-        if seconds > 0:
-            secondsDigits = int(log10(seconds)) + 1
-        elif seconds == 0:
-            secondsDigits = 1
-        
-        Text = f"{minutes}:"
-        for i in range(2-secondsDigits):
-            Text += "0"
-        Text += str(seconds)
+        self.time = int(time() - self.startTime) #Gets the length of the battle by taking away current time from the time the class was instantiated
+        Text = self.GetBattleTime()
         Text = GAME.boldFont.render(Text, True, BLACK)
         turnText = GAME.smallBoldFont.render(f"Turn: {turn}", True, WHITE)
-        pygame.draw.rect(GAME.screen, BLACK, self.border)
+        pygame.draw.rect(GAME.screen, BLACK, self.border) #Draws the borders boxes and text
         pygame.draw.rect(GAME.screen, BLACK, self.timeBorder)
         pygame.draw.rect(GAME.screen, BLUE, self.timeBox)
         pygame.draw.rect(GAME.screen, BLACK, self.TurnBorder)
@@ -2418,15 +2409,15 @@ class GameBar:
         GAME.screen.blit(Text, (self.timeBox.x+2, self.timeBox.y-4))
         GAME.screen.blit(turnText, (self.TurnBox.x+2, self.TurnBox.y+2))
 
-    def GetBattleTime(self) -> str:
-        seconds = self.time % 60
+    def GetBattleTime(self) -> str: #Gets the battle time
+        seconds = self.time % 60 #Gets the number of seconds and minutes
         minutes = self.time // 60
         if seconds > 0:
-            secondsDigits = int(log10(seconds)) + 1
+            secondsDigits = int(log10(seconds)) + 1 #Gets digits using a base ten logarithm
         elif seconds == 0:
             secondsDigits = 1
         
-        Text = f"{minutes}:"
+        Text = f"{minutes}:" #Formats the time and returns it
         for i in range(2-secondsDigits):
             Text += "0"
         Text += str(seconds)
@@ -2437,7 +2428,7 @@ class GameBar:
 class Box(pygame.sprite.Sprite):
     "Class for a simple box"
     def __init__(self, size: tuple, colour: str, topleft: tuple):
-        super(Box, self).__init__()
+        super(Box, self).__init__() #Calls the init method for pygame sprites
         self.rect = pygame.rect.Rect(topleft[0], topleft[1], size[0], size[1])
         self._Border = pygame.rect.Rect(topleft[0]-2, topleft[1]-2, size[0]+4, size[1]+4)
         self._Colour = colour
@@ -2446,67 +2437,67 @@ class Box(pygame.sprite.Sprite):
         pygame.draw.rect(GAME.screen, BLACK, self._Border)
         pygame.draw.rect(GAME.screen, self._Colour, self.rect)
     
-    def Update(self):
+    def Update(self): #Used to prevent errors when iterating through a list of objects with an update method and boxes
         return None
 
 ###############################################################################################################
 
-class Dagger(pygame.sprite.Sprite):
-
+class Gun(pygame.sprite.Sprite):
+    "Class representing the Gun used as an attack visual"
     def __init__(self, origin: Country, destination: Country, startY: int, endY: int):
-        super(Dagger, self).__init__()
+        super(Gun, self).__init__() #Calls the init method for pygame sprites
         self.startX = origin.rect.centerx
         self.startY = startY
         self.endX = destination.rect.centerx
         self.endY = endY
-        if self.startX > self.endX:
+        if self.startX > self.endX: #Calculates direction of travel and distance
             self.left = True
         else:
             self.left = False
         self.right = not self.left
         self.distancex = self.endX - self.startX
         self.distancey = self.endY - self.startY
-        image = pygame.image.load(resource_path("art/gun.png")).convert_alpha()
+        image = pygame.image.load(resource_path("art/gun.png")).convert_alpha() #Loads image
         self.image = pygame.transform.scale(image, (50, 50))
         if self.left:
-            self.image = pygame.transform.flip(self.image, True, False)
-        self.rect = self.image.get_rect()
-        self.rect.center = (self.startX, self.startY)
-        self.vector = (self.distancex / 120, self.distancey / 120)
+            self.image = pygame.transform.flip(self.image, True, False) #Flips the image to match direction of travel
+        self.rect = self.image.get_rect() #Generates a rect to move the image in
+        self.rect.center = (self.startX, self.startY) #Sets the centre of the rect
+        self.vector = (self.distancex / 120, self.distancey / 120) #Generate a vector representing its velocity
         self.travelled = 0
     
     def Update(self) -> bool:
-        if self.left and self.rect.centerx < self.endX:
+        if self.left and self.rect.centerx < self.endX: #If the target has been overshot, return True, representing that it has reached its target
             return True
         elif self.right and self.rect.centerx > self.endX:
             return True
         self.rect.x += self.vector[0]
         self.travelled += 1
-        self.rect.y = self.startY + (self.travelled * self.vector[1]) + 25*sin(self.travelled/10)
-        self.Draw()
+        self.rect.y = self.startY + (self.travelled * self.vector[1]) + 25*sin(self.travelled/10) #Uses the sin curve y = start + (velocity*x) + 25sin(x/10) to generate a bobbing motion
+        self.Draw() #Draws to the screen
         return False
     
     def Draw(self):
-        GAME.screen.blit(self.image, self.rect.topleft)
+        GAME.screen.blit(self.image, self.rect.topleft) #Blit the image to the screen
 
 #################################################################################################################
 
 class AttackTracker:
 
     def __init__(self):
-        self.CurrentTurnAttacks = HashTable(10)
-        self.Queue = AttackQueue()
+        self.CurrentTurnAttacks = HashTable(10) #Stores players current turn attacks in a hash table for easy comparison and scalability
+        self.Queue = AttackQueue() #This is the main attack queue 
     
     def AddAttackToQueue(self, attacker: Country, defender: Country):
         try:
-            self.CurrentTurnAttacks.Add((attacker, defender))
+            self.CurrentTurnAttacks.Add((attacker, defender)) #Attempt to add to the queue. Raise an error if the attack was not added. Return whether the attack was added or not
             return True
         except er.ActionNotUniqueError:
             return False
         
     def NewTurn(self, enemyAttacks: list, playerFirst: bool, playerCountries: list[Country], enemyCountries: list[Country]):
         playerattacks = self.GetAttacksThisTurn()
-        for i in enemyAttacks:
+        for i in enemyAttacks: #Iterate through the enemy attacks, and get the objects the hash corresponds to. Sets the Opponent attribute to the opponent
             if i[0] == hash(enemyCountries[0]):
                 for j in playerCountries:
                     if hash(j) == i[1]:
@@ -2517,47 +2508,48 @@ class AttackTracker:
                     if hash(j) == i[1]:
                         enemyCountries[0].Opponent = j
                         break
-        for i in playerattacks:
+        for i in playerattacks: #Sets the Opponent attribute for the player countries
             i[0].Opponent = i[1]
         playerOrderedAttacks = []
         enemyOrderedAttacks = []
         for i in playerCountries:
             if i.Opponent is not None:
-                playerOrderedAttacks.append([i, i.Opponent])
+                playerOrderedAttacks.append([i, i.Opponent]) #Iterates through the countries, in order, to generate an ordered list of attacks for player and enemy (topmost country first)
         for i in enemyCountries:
             if i.Opponent is not None:
                 enemyOrderedAttacks.append([i, i.Opponent])
         if playerFirst:
-            attacks = playerOrderedAttacks + enemyOrderedAttacks
+            attacks = playerOrderedAttacks + enemyOrderedAttacks #generates the list based on which player goes first
         else:
             attacks = enemyOrderedAttacks + playerOrderedAttacks
         print(attacks)
-        self.Queue.AddAttacks(attacks)
+        self.Queue.AddAttacks(attacks) #Adds the attacks to the queue and resets the hash table
         self.CurrentTurnAttacks = HashTable(10)
     
     def GetAttacksThisTurn(self) -> list[tuple[Country, Country]]:
-        attacks = list(self.CurrentTurnAttacks)
+        attacks = list(self.CurrentTurnAttacks) #Returns a list containing the player attacks
         return attacks
     
     def CheckCountry(self, country: Country):
-        return self.CurrentTurnAttacks.Search(country)
+        return self.CurrentTurnAttacks.Search(country) #Checks the hash table to see if the country has an attack planned already
         
 ###################################################################################################################################
 
-class HashTable(): #Hash table using chaining
+class HashTable():
+    "Hash table implementing chaining"
     def __init__(self, size):
         self.values = [] #type: list[LinkedList]
         self.size = size
         for i in range(0, size):
-            self.values.append(LinkedList())
+            self.values.append(LinkedList()) 
     
     def Add(self, item: tuple):
         index = hash(item[0]) % self.size
-        success = self.values[index].AddItem((item[0], item[1]))
+        success = self.values[index].AddItem((item[0], item[1])) #Attempts to add an item to the linked list. If it fails, raise an error
         if not success:
             raise er.ActionNotUniqueError
     
-    def Search(self, item: Country):
+    def Search(self, item: Country): #Search the linked list at the appropriate index for the country
         index = hash(item) % self.size
         linkedlist = self.values[index]
         itemFound = False
@@ -2567,7 +2559,7 @@ class HashTable(): #Hash table using chaining
                 break
         return itemFound
     
-    def __iter__(self):
+    def __iter__(self): #Called when iterating through the hash table (for example, by list() or using for i in HashTable)
         for List in self.values:
             for item in List:
                 if item == "Empty":
@@ -2601,7 +2593,7 @@ class LinkedList:
         else:
             return False
     
-    def MoveRoot(self):
+    def MoveRoot(self): #Removes the first item in the list by changing the root pointer
         if self.length < 1:
             return
         if self.root == None:
@@ -2610,7 +2602,7 @@ class LinkedList:
         self.root = self.root.ptr
         self.length -= 1
     
-    def __iter__(self):
+    def __iter__(self): #A generator to allow the list to act as an iterable
         if self.root is None:
             yield "Empty"
         else:
@@ -2619,7 +2611,7 @@ class LinkedList:
                 yield item.value
                 item = item.ptr
     
-    def __getitem__(self, index):
+    def __getitem__(self, index): #Allows for slice notation and indexing to work on the list
         if index >= self.length:
             raise IndexError
         currentItem = self.root
@@ -2629,10 +2621,11 @@ class LinkedList:
             return currentItem
         return currentItem.value
     
-    def __len__(self):
+    def __len__(self): #Called by len()
         return self.length
 
 class Node():
+    "Simple Node object"
     def __init__(self, item):
         self.value = item
         self.ptr = None
@@ -2649,7 +2642,7 @@ class Node():
 ##################################################################################################################################
 
 class AttackQueue:
-
+    "Linear Queue using a linked list"
     def __init__(self):
         self.attacks = LinkedList()
 
@@ -2658,25 +2651,26 @@ class AttackQueue:
     
     def Pop(self):
         try:
-            attack = self.attacks[0]
-        except IndexError:
+            attack = self.attacks[0] #Attempts to get the first item in the list
+        except IndexError: #if it doesnt exist, return None
             return None
-        self.attacks.MoveRoot()
+        self.attacks.MoveRoot() #Remove the first item
         return attack
     
     def AddAttacks(self, attacks: list):
         for attack in attacks:
-            self.attacks.AddItem(attack)
+            self.attacks.AddItem(attack) #Add attacks to the list iteratively
     
     def __len__(self):
-        return len(self.attacks)
+        return len(self.attacks) #Called by len()
 
 ##################################################################################################################################
 
 class InputBox:
+    "Class for a simple input box 15 characters long"
     def __init__(self, hint: str, font: pygame.font.Font, colour: str, left: int, top: int, width: int, height: int):
         self.rect = pygame.Rect(left, top, width, height)
-        self.string = ""
+        self.string = "" #generates an empty string for the input to be stored in
         self.colour = colour
         self.hint = font.render(hint, True, self.colour)
         self.font = font
@@ -2685,16 +2679,16 @@ class InputBox:
     def GetString(self) -> str:
         return self.string
     
-    def AddToString(self, char: str):
+    def AddToString(self, char: str): #Adds a character to the string if it is less than 15 characters long
         if len(self.string) == 15:
             return
         self.string += char
     
     def Delete(self):
-        self.string = self.string[:-1]
+        self.string = self.string[:-1] #Remove the last letter in the string
 
     def Draw(self):
-        pygame.draw.rect(GAME.screen, BLACK, self.border)
+        pygame.draw.rect(GAME.screen, BLACK, self.border) #Draws the black border and white box then renders the string and draws that to the screen
         pygame.draw.rect(GAME.screen, WHITE, self.rect)
         GAME.screen.blit(self.hint, (self.rect.x, self.rect.y-40))
         string = self.font.render(self.string, True, BLACK)
@@ -2703,35 +2697,36 @@ class InputBox:
 ####################################################################################################
 
 class Thread(threading.Thread):
+    "Custom thread to allow for quitting from within functions containing a while loop"
     def __init__(self, target: 'function', args: list):
         super(Thread, self).__init__(target=target, args=args + [self])
-        self.running = True
+        self.running = True #the function passed as the target should take the thread as an argument and check this attribute every iteration
         self.start()
     
     def quit(self):
         self.running = False
         
 def MainLoop():
-    GAME.screen.fill(BLACK)
-    GAME.Update()
+    GAME.screen.fill(BLACK) #Clear the screen
+    GAME.Update() #Update the game
     global CONN
-    CONN = Connection()
+    CONN = Connection() #Create the connection
     if GAME.New:
-        GetPlayerInfo()
+        GetPlayerInfo() #Get the player info if it is a new game, then call the tutorial
         GAME.Save()
         Tutorial()
-        MainMenu()
+        MainMenu() #Then call the main menu
     else:
-        success = CONN.Login()
+        success = CONN.Login() #Attempt to login. Exit if the login fails, if not call the main menu
         if not success:
             sys.exit() 
         else:
             MainMenu()
-    GAME.Save()
+    GAME.Save() #Save the game before exiting
 
 def MainMenu():
     xOffset = GAME.SCREENWIDTH // 15
-    PlayButton = Button("Play", BLACK, BLUE, ROYALBLUE, GAME.boldFont, 3*xOffset-100, 620, 100, 50)
+    PlayButton = Button("Play", BLACK, BLUE, ROYALBLUE, GAME.boldFont, 3*xOffset-100, 620, 100, 50) #generate the main menu buttons and cards
     TutorialButton = Button("Tutorial", BLACK, BLUE, ROYALBLUE, GAME.boldFont, 6*xOffset-100, 620, 100, 50)
     InventoryButton = Button("Inventory", BLACK, BLUE, ROYALBLUE, GAME.smallBoldFont, 9*xOffset-100, 620, 100, 50)
     exitButton = Button("Exit", BLACK, BLUE, ROYALBLUE, GAME.boldFont, 12*xOffset-100, 620, 100, 50)
@@ -2744,11 +2739,11 @@ def MainMenu():
     for card in cards:
         card.SetDetails()
     if not GAME.New:
-        welcomeText = GAME.smallBoldFont.render(f"Welcome back, {GAME.PLAYER.username}", True, BLACK)
+        welcomeText = GAME.smallBoldFont.render(f"Welcome back, {GAME.PLAYER.username}", True, BLACK) #generate welcome text
     click = False
     run = True
     stage = "Moving"
-    GAME.MusicPlayer.load(resource_path("music/Menu.ogg"))
+    GAME.MusicPlayer.load(resource_path("music/Menu.ogg")) #Load menu music
     GAME.MusicPlayer.play(-1)
     while run:
         GAME.screen.blit(GAME.titlescreen, (0,0))
@@ -2803,50 +2798,50 @@ def MainMenu():
     
         for event in GAME.getevent(): #Iterates through and handles player input events
 
-            if event.type == pygame.QUIT:
+            if event.type == pygame.QUIT: #If cross in corner pressed, save, then tell the server you are disconnecting and stop the loop
                 run = False
                 GAME.Save()
                 CONN.Send("END")
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 1:
+            elif event.type == pygame.MOUSEBUTTONDOWN: #Set the click flag if a click occurred. As every click is only handled once before calling another function to handle clicks
+                if event.button == 1:                  #It does not matter that a click could be registered across multiple frames as those extra frames will never be reached
                     click = True
             else:
                 click = False
 
-        GAME.Update()
+        GAME.Update() #Update the game
 
 def Tutorial():
-    GAME.Reset()
+    GAME.Reset() #Reset the game screen, generate the tutorial countries
     enemyCountries = [EnemyBalancedCountry(25, 40, "Italy"), EnemyAggressiveCountry(25, 40, "Hungary")]
     enemyBuffs = [MinorProductionBuff(False), MinorDefenseBuff(False)]
     playerCountries = [PlayerBalancedCountry(25, 40, "Angola"), PlayerAggressiveCountry(25, 40, "Canada")]
     playerBuffs = [MajorAttackBuff(True), MajorProductionBuff(True)]
-    enemy = Player(username="EnemyBot", elo=1000)
+    enemy = Player(username="EnemyBot", elo=1000) #generate the tutorial enemy
     player = GAME.PLAYER
-    if GAME.New:
+    if GAME.New: #if its a new game, give the player the countries and set the priority cards to the new cards
         player.countries = playerCountries
         player.buffs = playerBuffs
         player.prioritycountries = playerCountries.copy()
         player.prioritybuffs = playerBuffs.copy()
         GAME.Save()
-    else:
+    else: #Otherwise, ensure the player has those cards, and that the priority card attributes are filled
         playerCountries = player.prioritycountries
         if len(playerCountries) < 2:
             playerCountries = [player.countries[0], player.countries[1]]
         playerBuffs = player.prioritybuffs
         if len(playerBuffs) < 2:
             playerBuffs = [player.prioritybuffs[0], player.prioritybuffs[1]]
-    Battle = TutorialBattle(player, playerCountries, playerBuffs, enemy, enemyCountries, enemyBuffs)
+    Battle = TutorialBattle(player, playerCountries, playerBuffs, enemy, enemyCountries, enemyBuffs) #Initialise and run the battle
     Battle.Run()
-    GAME.Reset()
+    GAME.Reset() #Reset the game, and set the new flag to false
     GAME.New = False
 
 def Inventory():
-    GAME.Reset()
+    GAME.Reset() #Reset the game, get the players cards
     player = GAME.PLAYER
     countries = player.countries.copy()
     buffs = player.buffs.copy()
-    InventoryText = GAME.bigBoldFont.render("INVENTORY", True, WHITE)
+    InventoryText = GAME.bigBoldFont.render("INVENTORY", True, WHITE) #Generate the text and buttons
     HintText = GAME.smallBoldFont.render("Remember, the gold cards are your battle cards!", True, WHITE)
     SwitchButton = Button("Switch To: Buffs", WHITE, BLUE, ROYALBLUE, GAME.smallBoldFont, 790, 10, 260, 30)
     NextPage = Button("Next Page", WHITE, BLUE, ROYALBLUE, GAME.smallBoldFont, 930, 50, 115, 30)
@@ -2856,28 +2851,28 @@ def Inventory():
     countrypages = []
     buffpages = []
     GAME.MusicPlayer.unload()
-    GAME.MusicPlayer.load(resource_path("music/Loading.ogg"))
+    GAME.MusicPlayer.load(resource_path("music/Loading.ogg")) #Load the inventory music, play infinitely
     GAME.MusicPlayer.play(-1)
-    while countries != []:
-        page = pygame.Surface(GAME.screen.get_size())
+    while countries != []: #Until there are no more countries to be displayed
+        page = pygame.Surface(GAME.screen.get_size()) #Get a new screen and blit the text to the screen
         page.fill(BLUE)
         page.blit(InventoryText, (GAME.SCREENWIDTH/2-200, 10))
         page.blit(HintText, (10, 80))
         ypos = 230
         xpos = 100
         rows = []
-        for i in range(2):
+        for i in range(2): #Iteratively blit the countries to the screen
             row = countries[:6]
             if row == []:
                 row += countries
             if row == []:
                 break
             for i in row:
-                i.Reset()
+                i.Reset() #Reset each card and update its target position to the new position
                 i.UpdatePosition((xpos, ypos))
                 i.SetDetails()
                 if i in player.prioritycountries:
-                    i.priority = True
+                    i.priority = True #Set the priority flag on the priority countries
                 else:
                     i.priority = False
                 xpos += 175
@@ -2885,9 +2880,9 @@ def Inventory():
             ypos += 260
             xpos = 100
             rows += row
-        countrypages.append((page, rows))
+        countrypages.append((page, rows)) #Add the page and the lists of countries to the countrypages variable
 
-    while buffs != []:
+    while buffs != []: #Do the same for buffs
         page = pygame.Surface(GAME.screen.get_size())
         page.fill(BLUE)
         page.blit(InventoryText, (GAME.SCREENWIDTH/2-200, 10))
@@ -2918,7 +2913,7 @@ def Inventory():
             rows += row
         buffpages.append((page, rows))
     pages = countrypages #type: list[tuple[pygame.Surface, Card]]
-    pageNum = 1
+    pageNum = 1 #Set the page number and stage, generate the action box and declare necessary variables
     stage = "Move"
     ActionBox = Box((1080, 100), BLUE, (0, GAME.SCREENHEIGHT-100))
     productionText = Text("Production Power: ", GAME.SCREENWIDTH//2, GAME.SCREENHEIGHT-50)
@@ -2932,9 +2927,9 @@ def Inventory():
             clicked = True
         else:
             click = False
-        GAME.screen.blit(pages[pageNum-1][0], (0, 0))
+        GAME.screen.blit(pages[pageNum-1][0], (0, 0)) #Blit the current page to the screen
 
-        if stage == "Move":
+        if stage == "Move": #If in the move stage, check if all cards are in place, before moving to the flip stage if they are
             inProgress = False
             for card in pages[pageNum-1][1]:
                 if not card.inPos:
@@ -2944,7 +2939,7 @@ def Inventory():
             if not inProgress:
                 stage = "Flip"
 
-        elif stage == "Flip":
+        elif stage == "Flip": #If in the flipping stage, check all cards are flipped before moving to the main inventory stage
             inProgress = False
             for card in pages[pageNum-1][1]:
                 if not card.flipped:
@@ -2955,30 +2950,30 @@ def Inventory():
             if not inProgress:
                 stage = "Inventory"
 
-        elif stage == "Options":
+        elif stage == "Options": #If the stage is the options stage, draw the button to the screen and the action box and handle them if they are pressed
             ActionBox.Draw()
             if cardSelected is not None and isinstance(cardSelected, Country):
                 pp = cardSelected.prodpower
-                new = "Production Power: " + str(pp)
-                if productionText.string != new:
+                new = "Production Power: " + str(pp) #Show the production power of the country
+                if productionText.string != new: #If the new text is not the same as the current production text, update it
                     productionText.UpdateText(new)
                 productionText.Draw()
             for button in priorityButtons:
                 button.Draw()
-                if button.rect.collidepoint((mx, my)):
+                if button.rect.collidepoint((mx, my)): 
                     button.Highlight() 
-                    if click:
+                    if click: #If the priority button is clicked, set the card as priority and go back to the inventory stage
                         player.SetPriority(cardSelected)
                         stage = "Inventory"
-                        cardSelected.highlighted = False
+                        cardSelected.highlighted = False #De-highlight the card selected and set card selected to None
                         cardSelected = None
             
-        mx, my = pygame.mouse.get_pos()
+        mx, my = pygame.mouse.get_pos() #Get the mouse position
 
-        for card in pages[pageNum-1][1]:
+        for card in pages[pageNum-1][1]: #Draws each card on the current page
             card.Draw()
-            if card.rect.collidepoint((mx, my)) and click and (stage == "Options" or stage == "Inventory"):
-                if cardSelected == card:
+            if card.rect.collidepoint((mx, my)) and click and (stage == "Options" or stage == "Inventory"): #If in the right stage, processes the card click by deselecting it if selected
+                if cardSelected == card:                                                                    #Or selecting it if not
                     stage = "Inventory"
                     cardSelected = None
                     card.highlighted = False
@@ -2989,31 +2984,31 @@ def Inventory():
                     cardSelected = card
                     card.highlighted = True
         
-        for button in buttons:
+        for button in buttons: #Draws the buttons at the top of the screen, and handles them if they are pressed
             button.Draw()
             if button.rect.collidepoint(mx, my):
                 button.Highlight()
                 if click:
                     GAME.SFXPlayer.play(GAME.ClickSound)
-                    if button.string == "Next Page":
+                    if button.string == "Next Page": #Goes to the next page of the same card type, ignoring if the page does not exist
                         if pageNum + 1 > len(pages):
                             continue
                         pageNum += 1
-                    elif button.string == "Last Page":
+                    elif button.string == "Last Page": #Goes to the previous page of the same card type, ignoring if it is on the first page
                         if pageNum - 1 < 1:
                             continue
                         pageNum -= 1    
-                    elif button.string == "Switch To: Buffs":
+                    elif button.string == "Switch To: Buffs": #Sets the pages to the buff pages, resets the stage and page number
                         pages = buffpages
                         pageNum = 1
                         stage = "Move"
-                        button.UpdateString("Switch To: Countries")
-                    elif button.string == "Switch To: Countries":
+                        button.UpdateString("Switch To: Countries") #Updates the button string to reflect that we are now on buffs
+                    elif button.string == "Switch To: Countries": #Sets the pages to the country pages, resets the stage and page number
                         pages = countrypages
                         pageNum = 1
                         stage = "Move" 
-                        button.UpdateString("Switch To: Buffs")  
-                    if cardSelected is not None:
+                        button.UpdateString("Switch To: Buffs")  #Updates the button string to reflect that we are now on countries
+                    if cardSelected is not None: #If there is a card selected, deselects the card and de-highlights them then resets the variable
                         cardSelected.highlighted = False 
                         cardSelected = None     
             
@@ -3032,30 +3027,30 @@ def Inventory():
         
 def GetPlayerInfo():
     run = True
-    inputbox = InputBox("Enter Your Name:", GAME.smallBoldFont, WHITE, GAME.SCREENWIDTH/2-100, GAME.SCREENHEIGHT/2-20, 200, 40)
+    inputbox = InputBox("Enter Your Name:", GAME.smallBoldFont, WHITE, GAME.SCREENWIDTH/2-100, GAME.SCREENHEIGHT/2-20, 200, 40) #instantiate input box
     while run:
-        GAME.screen.fill(BLUE)
+        GAME.screen.fill(BLUE) #Fill the screen
         inputbox.Draw()
         for event in GAME.getevent():                       #Gets user input events, iterates through them
-            if event.type == pygame.KEYUP:
-                if event.key == pygame.K_RETURN:
-                    GAME.PLAYER.SetUsername(inputbox.string) 
+            if event.type == pygame.KEYUP: #If a key was pressed and released
+                if event.key == pygame.K_RETURN: #If that key was the enter key, set the username to the contents of the input box and break
+                    GAME.PLAYER.SetUsername(inputbox.string)  
                     run = False
                     break
-                elif event.key == pygame.K_BACKSPACE:
+                elif event.key == pygame.K_BACKSPACE: #if the key was a backspace, remove a letter
                     inputbox.Delete()
                     continue
                 try:
-                    inputbox.AddToString(chr(event.key))
+                    inputbox.AddToString(chr(event.key)) #Try to add the letter to the username. If the key pressed was not a letter, ignore it
                 except:
                     pass
         GAME.Update()
     inputbox = InputBox("Enter Your Password:", GAME.smallBoldFont, WHITE, GAME.SCREENWIDTH/2-100, GAME.SCREENHEIGHT/2-20, 200, 40)
     run = True
-    while run:
+    while run: #the same as for the username, but for the password
         GAME.screen.fill(BLUE)
         inputbox.Draw()
-        for event in GAME.getevent():                       #Gets user input events, iterates through them
+        for event in GAME.getevent():            
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_RETURN:
                     GAME.PLAYER.SetPassword(inputbox.string)
@@ -3069,68 +3064,68 @@ def GetPlayerInfo():
                 except:
                     pass
         GAME.Update()
-    success = CONN.Login()
-    if success:
+    success = CONN.Login() #Attempts to log in with current credentials
+    if success: #If signing up and logging in was a success, return
         return
-    error = GAME.smallBoldFont.render("Try a different username!", True, WHITE)
+    error = GAME.smallBoldFont.render("Try a different username!", True, WHITE) #Otherwise, display a message telling the user to try a different name for 180 ticks
     timer = 0
     while timer < 180:
         GAME.screen.fill(BLUE)
         GAME.screen.blit(error, (GAME.SCREENWIDTH/2-100, GAME.SCREENHEIGHT/2-20))
         GAME.Update()
         timer += 1
-    GetPlayerInfo()
+    GetPlayerInfo() #then recursively call itself to get the new credentials
 
 def Play():
-    t = Thread(target=LoadScreen, args=["Matchmaking..."])
+    t = Thread(target=LoadScreen, args=["Matchmaking..."]) #Display loading screen 
     d1 = []
     d2 = []
-    d3 = {"Player": [GAME.PLAYER.username, GAME.PLAYER.elo], "First": None}
-    countries = GAME.PLAYER.prioritycountries.copy()
+    d3 = {"Player": [GAME.PLAYER.username, GAME.PLAYER.elo], "First": None} #Generate player information dictionary
+    countries = GAME.PLAYER.prioritycountries.copy() #Add a list version of the priority countries to the first list 
     for i in countries:
         d1.append(i.ToList())
-    buffs = GAME.PLAYER.prioritybuffs.copy()
-    for i in buffs:
+    buffs = GAME.PLAYER.prioritybuffs.copy() 
+    for i in buffs: #Add a list version of the priority buffs to the second list
         d2.append(str(i))
-    CONN.Send("MATCHMAKE")
+    CONN.Send("MATCHMAKE") #Send a command to matchmake the user and wait for the response saying a match has been found
     data = CONN.Receive()
     while data["Command"] != "MATCHMADE":
         for event in GAME.getevent():
-            if event.type == pygame.QUIT:
+            if event.type == pygame.QUIT: #If the player quits before a match was found, send unmatchmake and return
                 t.quit()
                 CONN.Send("UNMATCHMAKE")
                 t.join()
                 return
         data = CONN.Receive()
-    CONN.SetBattleMode()
+    CONN.SetBattleMode() #Set the connection to receive setup information from the server
     t.quit()
     t.join()
-    t = Thread(target=LoadScreen, args=["Initialising Battle..."])
+    t = Thread(target=LoadScreen, args=["Initialising Battle..."]) #generate a new loading screen
     setupdata = CONN.Receive()
-    while setupdata["Command"] != "IP":
+    while setupdata["Command"] != "IP": #Wait for setup data
         for event in GAME.getevent():
             pass
         setupdata = CONN.Receive()
-    CONN.Send("RECEIVED")
+    CONN.Send("RECEIVED") #Send received message
     received = False
     while not received:
-        try:
+        try: #Wait to receive the enemies public key
             key = CONN.SOCK.recv(2048)
             received = True
-        except:
-            pass
+        except Exception as e:
+            print(e)
         for event in GAME.getevent():
             pass
     try:
-        key = rsa.PublicKey.load_pkcs1(key, "PEM")
+        key = rsa.PublicKey.load_pkcs1(key, "PEM") #Load the public key
     except Exception as e:
         print(e)
-    d3["First"] = setupdata["Args"][1]
+    d3["First"] = setupdata["Args"][1] #Gets whether the player goes first or not and creates the player object
     enemy = Player(ip=setupdata["Args"][0], key=key)
-    CONN.SetBattlePlayerMode(setupdata["Args"][0], setupdata["Args"][1])
-    if d3["First"]:
+    CONN.SetBattlePlayerMode(setupdata["Args"][0], setupdata["Args"][1]) #sets up the peer to peer connection
+    if d3["First"]: #If the player goes first
         data = CONN.Receive()
-        while data["Command"] != "CLEAR":
+        while data["Command"] != "CLEAR": #Waits for the clear to send then sends the battle setup data
             for event in GAME.getevent():
                 pass
             data = CONN.Receive()
@@ -3152,7 +3147,7 @@ def Play():
             for event in GAME.getevent():
                 pass
             data = CONN.Receive()
-    CONN.SendToPlayer("CLEAR", enemy.key)
+    CONN.SendToPlayer("CLEAR", enemy.key) #Sends the clear to send, then receives enemy data
     data = CONN.Receive()
     while data["Command"] != "BATTLE": #Expects Dict containing key "EnemyCountries"
         for event in GAME.getevent():
@@ -3174,7 +3169,7 @@ def Play():
         data3 = CONN.Receive()
     battle3 = data3["Args"][0]
     CONN.SendToPlayer("RECEIVED", enemy.key)
-    if not d3["First"]:
+    if not d3["First"]: #If the player does not go first, send changes
         CONN.SendToPlayer("BATTLE", enemy.key, d1)
         data = CONN.Receive()
         while data["Command"] != "RECEIVED":
@@ -3193,7 +3188,7 @@ def Play():
             for event in GAME.getevent():
                 pass
             data = CONN.Receive()
-    enemyCountries = battle
+    enemyCountries = battle #Create country objects and instantiate the battle
     enemyBuffs = battle2
     enemyCountryObjects = []
     enemyBuffObjects = []
@@ -3214,9 +3209,9 @@ def Play():
         enemyBuffObjects.append(eval(buff + "(False)"))
     battle = Battle(GAME.PLAYER, playerCountries, playerBuffs, enemy, enemyCountryObjects, enemyBuffObjects, battle3["First"])
     t.quit()
-    t.join()
-    battle.Run()
-    CONN.SetNormalMode()
+    t.join() #End the loading screen
+    battle.Run() #begin the battle
+    CONN.SetNormalMode() #Reset the connection and game
     GAME.Reset()
 
 class LoadObject:
@@ -3224,18 +3219,19 @@ class LoadObject:
         self.rect = pygame.Rect(centre[0], centre[1], 8, 8)
         self.centre = centre
         self.theta = 0
-        self.SpiralFunc = lambda: 146*(self.theta**(1/6))-50
+        self.SpiralFunc = lambda: 146*(self.theta**(1/6))-50 #Lambda function that calculates the radius of a fermat spiral with respect to theta 
 
     def Draw(self):
         self.theta += 0.05
         radius = self.SpiralFunc()
-        adj = radius * cos(self.theta)
+        adj = radius * cos(self.theta) #Uses trigonometry to resolve the radius into its component lengths 
         opp = radius * sin(self.theta)
         self.rect.x = self.centre[0]+adj
         self.rect.y = self.centre[1]+opp
         pygame.draw.rect(GAME.screen, ROYALBLUE, self.rect)
 
 class Text:
+    "Simple class containing just text, allowing for the text to be changed"
     def __init__(self, text: str, x: int, y: int):
         self.string = text
         self.text = GAME.smallBoldFont.render(text, True, BLACK)
@@ -3255,14 +3251,14 @@ class Text:
 def LoadScreen(string: str, thread: Thread):    
     text = GAME.boldFont.render(string, True, WHITE)
     rect = text.get_rect()
-    x = (GAME.SCREENWIDTH//2) - (rect.width//2)
+    x = (GAME.SCREENWIDTH//2) - (rect.width//2) #Centres the text
     y = (GAME.SCREENHEIGHT//2) - (rect.height//2)
     los = [LoadObject((GAME.SCREENWIDTH/2, GAME.SCREENHEIGHT/2))]
     counter = 0
     while thread.running:
         GAME.screen.fill(BLUE) 
         counter += 1
-        if counter % 10 == 0 and counter <= 10000:
+        if counter % 10 == 0 and counter <= 10000: #Every ten ticks, adds a new object up to 1000 objects
             los.append(LoadObject((GAME.SCREENWIDTH/2, GAME.SCREENHEIGHT/2)))
         for lo in los:    
             lo.Draw()
@@ -3270,10 +3266,10 @@ def LoadScreen(string: str, thread: Thread):
         GAME.Update()
 
 def Main():
-    global GAME 
+    global GAME #Initialise the game
     GAME = Game()
-    GAME.LoadPlayer()
-    MainLoop()
+    GAME.LoadPlayer() #Load player data
+    MainLoop() #Calls main loop
 
-if __name__ == "__main__":
+if __name__ == "__main__": #if this script is ran directly (ie, not just called from an import statement) run the Main() function
     Main()
