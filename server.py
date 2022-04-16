@@ -370,7 +370,9 @@ class Server: #Class containing server methods and attributes
     def receive(self, conn: socket.socket) -> tuple[str, str]:
         try:
             data = conn.recv(2048)
-        except:
+        except Exception as e:
+            if e == socket.errorTab[10054] or e == socket.errorTab[10053]:
+                return "DISCONNECT", None
             return None, None
         new = rsa.decrypt(data, self.__privkey)
         data = json.loads(new.decode("utf-8"))
@@ -591,6 +593,9 @@ class Server: #Class containing server methods and attributes
                 print(command, info, " received in handle")
                 if command == False:
                     print("Unauthorized connection from ", client.getpeername()[0])
+                    break
+                elif command == "DISCONNECT":
+                    print(f"{player.username} has disconnected unexpectedly")
                     break
             except:
                 continue
