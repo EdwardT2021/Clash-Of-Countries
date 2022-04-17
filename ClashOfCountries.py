@@ -1130,8 +1130,6 @@ class Connection:
                                       #the country to the player object and calls save
         "Add a Country card to the players inventory and saves the game"
         countryhashes = [hash(x) for x in GAME.PLAYER.countries]
-        print(countryhashes)
-        print(hash(c))
         if hash(c) in countryhashes:
             return
         GAME.PLAYER.countries.append(c)
@@ -1141,8 +1139,6 @@ class Connection:
                                 #the country to the player object and calls save
         "Add a Buff card to the players inventory and save the game"
         buffhashes = [hash(x) for x in GAME.PLAYER.buffs]
-        print(buffhashes)
-        print(hash(b))
         if hash(b) in buffhashes:
             return
         GAME.PLAYER.buffs.append(b)
