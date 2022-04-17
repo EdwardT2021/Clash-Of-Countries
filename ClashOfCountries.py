@@ -1,6 +1,5 @@
 import socket as s
 import random as r
-from urllib.parse import non_hierarchical
 import clientErrors as er
 import pygame
 from os import path
