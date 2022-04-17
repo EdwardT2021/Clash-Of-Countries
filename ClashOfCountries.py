@@ -2502,7 +2502,7 @@ class AttackTracker:
         
     def NewTurn(self, enemyAttacks: list, playerFirst: bool, playerCountries: list[Country], enemyCountries: list[Country]):
         playerattacks = self.GetAttacksThisTurn()
-        for i in enemyAttacks: #Iterate through the enemy attacks, and get the objects the hash corresponds to. Sets the Opponent attribute to the opponent
+        for i in enemyAttacks: #Iterate through the enemy attacks, sets the Opponent attribute to the opponent
             i[0].Opponent = i[1]
         for i in playerattacks: #Sets the Opponent attribute for the player countries
             i[0].Opponent = i[1]
