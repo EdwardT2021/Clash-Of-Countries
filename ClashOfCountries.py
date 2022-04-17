@@ -2246,6 +2246,7 @@ class StageManager:
         enemyActions = self._Battle.GetEnemyActions() #Get the enemy actions
         if enemyActions is True:
             self._Battle.run = False
+            return
         attacks = []
         for i in range(len(self._EnemyCountries)): #Iterate through the indices of the countries
             actions = enemyActions[i] #Get the actions for the country and the country
