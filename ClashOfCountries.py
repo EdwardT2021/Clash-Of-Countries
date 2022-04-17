@@ -1711,7 +1711,7 @@ class Battle:
             t.quit()
             t.join()
             self.BattleFinished(True)
-            return
+            return True
 
         if self.playerFirst: #If you are the first player, wait for the opponent to be ready to receive and then call the SendPlayerActions function
             data = CONN.Receive()
@@ -2244,6 +2244,8 @@ class StageManager:
         message = GameMessage(f"Turn {self._Turn}", GAME.boldFont, WHITE, messageRect, 100)
         self._Battle.messageQueue.Add(message) #Add a message to the queue displaying the turn number 
         enemyActions = self._Battle.GetEnemyActions() #Get the enemy actions
+        if enemyActions is True:
+            self._Battle.run = False
         attacks = []
         for i in range(len(self._EnemyCountries)): #Iterate through the indices of the countries
             actions = enemyActions[i] #Get the actions for the country and the country
@@ -3215,7 +3217,6 @@ def Play():
     t.quit()
     t.join() #End the loading screen
     battle.Run() #begin the battle
-    CONN.SetNormalMode() #Reset the connection and game
     GAME.Reset()
 
 class LoadObject:
