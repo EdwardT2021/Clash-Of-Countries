@@ -2996,10 +2996,12 @@ def Inventory():
                         if pageNum + 1 > len(pages):
                             continue
                         pageNum += 1
+                        stage = "Move"
                     elif button.string == "Last Page": #Goes to the previous page of the same card type, ignoring if it is on the first page
                         if pageNum - 1 < 1:
                             continue
-                        pageNum -= 1    
+                        pageNum -= 1
+                        stage = "Move"    
                     elif button.string == "Switch To: Buffs": #Sets the pages to the buff pages, resets the stage and page number
                         pages = buffpages
                         pageNum = 1
