@@ -276,13 +276,13 @@ class Battle:
         self.player1first = bool(random.randint(0, 1))   
         p1connected = False
         p2connected = False
-        while not (p1connected and p2connected):
+        while not (p1connected and p2connected): #Waits for both players to connect
             try:
                 player, address = self.__socket.accept()
                 player.settimeout(1)
             except:
                 continue
-            if address[0] == self.player1.socket.getpeername()[0]:
+            if address[0] == self.player1.socket.getpeername()[0]:#Checks the player by comparing IP addresses
                 self.p1socket = player
                 p1connected = True
                 print(f"{player1} connected")
@@ -291,18 +291,18 @@ class Battle:
                 p2connected = True
                 print(f"{player2} connected")
 
-        SERVER.send("IP", self.p1socket, self.player1.key, self.player2.socket.getpeername()[0], self.player1first)
+        SERVER.send("IP", self.p1socket, self.player1.key, self.player2.socket.getpeername()[0], self.player1first) #Sends player 2s IP address to player 1 and whether player 1 goes first
         key2 = self.player2.key.save_pkcs1("PEM")
-        while SERVER.receive(self.p1socket)[0] != "RECEIVED":
+        while SERVER.receive(self.p1socket)[0] != "RECEIVED": #Wait for confirmation
             continue
-        self.p1socket.send(key2)
-        SERVER.send("IP", self.p2socket, self.player2.key, self.player1.socket.getpeername()[0], not self.player1first)
-        key1 = self.player1.key.save_pkcs1("PEM")
-        while SERVER.receive(self.p2socket)[0] != "RECEIVED":
+        self.p1socket.send(key2) #Sends player 2s public key to player 1
+        SERVER.send("IP", self.p2socket, self.player2.key, self.player1.socket.getpeername()[0], not self.player1first) #Sends player 1s IP address to player 2 and whether player 2 goes first
+        key1 = self.player1.key.save_pkcs1("PEM") #Get player 1s key
+        while SERVER.receive(self.p2socket)[0] != "RECEIVED": #Waits for confirmation
             continue
-        self.p2socket.send(key1)
+        self.p2socket.send(key1) #Sends player 1s key to player 2
         print(f"Battle between {player1.username} and {player2.username} initialised!")
-        self.p1socket.close()
+        self.p1socket.close() #Close the sockets
         self.p2socket.close()
         self.__socket.close()
 

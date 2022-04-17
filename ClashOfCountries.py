@@ -2212,7 +2212,7 @@ class StageManager:
             return
         self._AttackTracker.AddAttackToQueue(self._CardSelected, country) #Otherwise, add the attack to the queue, and set the player actions space to the opponent
         pos = self._Battle.playerCountries.index(self._CardSelected)
-        self._Battle.PlayerActions[pos][0][1] = country
+        self._Battle.PlayerActions[pos][0][1] = hash(country)
         for card in self._EnemyCountries: #Dehighlight the enemy countries
             card.highlighted = False
         self.Reset() #Reset card info
