@@ -44,7 +44,7 @@ def Hash(string: str) -> int:
     "Get a 32 bit hash for a string"
     hashnum = 0
     for s in string:
-        hashnum = (hashnum*607 ** ord(s)*409) & 0xFFFFFFFF
+        hashnum = (hashnum*607 ^ ord(s)*409) & 0xFFFFFFFF
     return hashnum
 
 class Card(pygame.sprite.Sprite):
@@ -1129,7 +1129,10 @@ class Connection:
     def AddCountry(self, c: Country): #Checks if the country exists using their hash values, if not then it adds
                                       #the country to the player object and calls save
         "Add a Country card to the players inventory and saves the game"
-        if hash(c) in [hash(x) for x in GAME.PLAYER.countries]:
+        countryhashes = [hash(x) for x in GAME.PLAYER.countries]
+        print(countryhashes)
+        print(hash(c))
+        if hash(c) in countryhashes:
             return
         GAME.PLAYER.countries.append(c)
         GAME.Save()
@@ -1137,7 +1140,10 @@ class Connection:
     def AddBuff(self, b: Buff): #Checks if the buff exists using their hash values, if not then it adds
                                 #the country to the player object and calls save
         "Add a Buff card to the players inventory and save the game"
-        if hash(b) in [hash(x) for x in GAME.PLAYER.buffs]:
+        buffhashes = [hash(x) for x in GAME.PLAYER.buffs]
+        print(buffhashes)
+        print(hash(b))
+        if hash(b) in buffhashes:
             return
         GAME.PLAYER.buffs.append(b)
         GAME.Save()
