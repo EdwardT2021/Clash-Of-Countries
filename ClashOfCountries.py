@@ -2259,6 +2259,7 @@ class StageManager:
                 if attack[1] == hash(j):
                     defender = j
             attack[1] = defender
+            attacks.append(attack)
             card.army.AddInfantry(actions[1][0]) #Add the troop numbers and fortifications
             card.army.AddTanks(actions[1][1])
             card.army.AddPlanes(actions[1][2])
@@ -2502,16 +2503,7 @@ class AttackTracker:
     def NewTurn(self, enemyAttacks: list, playerFirst: bool, playerCountries: list[Country], enemyCountries: list[Country]):
         playerattacks = self.GetAttacksThisTurn()
         for i in enemyAttacks: #Iterate through the enemy attacks, and get the objects the hash corresponds to. Sets the Opponent attribute to the opponent
-            if i[0] == hash(enemyCountries[0]):
-                for j in playerCountries:
-                    if hash(j) == i[1]:
-                        enemyCountries[0].Opponent = j
-                        break
-            elif i[0] == hash(enemyCountries[1]):
-                for j in playerCountries:
-                    if hash(j) == i[1]:
-                        enemyCountries[0].Opponent = j
-                        break
+            i[0].Opponent = i[1]
         for i in playerattacks: #Sets the Opponent attribute for the player countries
             i[0].Opponent = i[1]
         playerOrderedAttacks = []
