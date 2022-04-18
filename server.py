@@ -8,7 +8,7 @@ import json
 import rsa
 from hashlib import sha256
 
-AUTH = str(sha256("121212".encode("ascii"), usedforsecurity=True).digest())
+AUTH = str(sha256("121212".encode("ascii"), usedforsecurity=True).digest()) #Authentication code for network transmissions
 
 #The following hash is not cryptographically secure, and should only be used to compare objects
 def Hash(string: str) -> int:
@@ -29,19 +29,6 @@ class Buff:
     def __hash__(self) -> str:
         "Simple hashing function for the class. No other unique buff will have this combination string" 
         return Hash(f"{self.change}{self.statAffected}{self.linear}")
-
-    def __getstate__(self) -> dict:
-        "Called by pickle.dump/s(), to allow itself to be converted to binary"
-        return {"instance": self.__class__}
-        #As every subclass of buff has set values, we dont need to try and convert all its attributes to binary and convert back.
-        #Instead, we can simply store what class it is, and then call the __init__() method
-        #of the class when it is loaded again
-    
-    def __setstate__(self, d: dict):
-        d["instance"].__init__(self, True)
-        #Here we can see the above in action, calling the __init__() method of its own class on itself.
-        #True is passed as the player values, as only player-owned objects are ever saved.
-        #This is because the only object that is pickled is the player object, containing references to these classes
     
     def __repr__(self) -> str:
         return self.__class__.__name__[:-4]
@@ -203,21 +190,6 @@ class Country:
         "Creates a unique hash for the country"
         return Hash(f"{self.name}{self.production}{self.towns}{self.type}")
     
-    def __getstate__(self) -> dict:
-        "Called by pickle.dump/s(), returns the variables needed for instanciation and its class"
-        d = {"Production": self.production, "Towns": self.towns, "Name": self.name, "instance": self.__class__}
-        return d
-    
-    def __setstate__(self, d: dict):
-        """
-        Takes a dictionary containing the variables needed for instanciation and its class.
-        Calls the __init__() method of the class and passes in the variables
-        """
-        production = d["Production"]
-        towns = d["Towns"]
-        name = d["Name"]
-        d["instance"].__init__(self, production, towns, name)
-    
     def ToList(self) -> list:
         return [self.name, self.towns, self.type, self.production]
 
@@ -371,10 +343,10 @@ class Server: #Class containing server methods and attributes
         try:
             data = conn.recv(2048)
         except Exception as e:
-            if str(e) == socket.errorTab[10054] or str(e) == socket.errorTab[10053]:
+            if str(e) == socket.errorTab[10054] or str(e) == socket.errorTab[10053]: #If the socket has closed unexpectedly, tell the caller that the client disconnected
                 return "DISCONNECT", None
             return None, None
-        new = rsa.decrypt(data, self.__privkey)
+        new = rsa.decrypt(data, self.__privkey) #Decrypt and load the message, check the authorization code
         data = json.loads(new.decode("utf-8"))
         command = data["Command"]
         args = data["Args"]
@@ -385,7 +357,7 @@ class Server: #Class containing server methods and attributes
         
     def __accept(self): #Accepts new connections
         print("Accepting Connections")
-        while True:
+        while True: #Loops, waiting for connections
             try:
                 client, address = self.__socket.accept()
             except:
@@ -405,7 +377,7 @@ class Server: #Class containing server methods and attributes
                     except RuntimeError:
                         try:
                             self.__handlerThreads.remove(thread) #Thread not explicitly deleted as handled more efficiently by garbage collector
-                                                                 #Threads can also change IDs which can cause the del() function to raise an error
+                                                                 #Threads can also change IDs which can cause the del() function to raise an error. I cannot find a solution to this
                         except:
                             pass
 
@@ -415,7 +387,7 @@ class Server: #Class containing server methods and attributes
             while failed:
                 try:
                     data = client.recv(4096)
-                    servkey = self.__pubkey.save_pkcs1("PEM")
+                    servkey = self.__pubkey.save_pkcs1("PEM") #Attempts to get the server key and the client key then send the server key and load the client key
                     client.send(servkey)
                 except:
                     continue
@@ -430,7 +402,7 @@ class Server: #Class containing server methods and attributes
                         command, info = self.receive(client) 
                         received = True
                         if command == False:
-                            print("Unauthorized connection from ", client.getpeername()[0])
+                            print("Unauthorized connection from ", client.getpeername()[0]) #If the receive function detected unauthorised request, break off the thread
                             break
                     except:
                         pass
@@ -481,7 +453,7 @@ class Server: #Class containing server methods and attributes
                     cur = conn.cursor()
                 except:
                     raise e.DatabaseAccessError
-                cur.execute(playerinfo)
+                cur.execute(playerinfo) #execute the statements and load the data
                 pname, pwins, plosses, pelo = cur.fetchone()
                 cur.execute(countryinfo)
                 clist = []
@@ -529,7 +501,8 @@ class Server: #Class containing server methods and attributes
             player = Player(pname, clist, priorityclist, blist, priorityblist, pwins, plosses, pelo, client, key)
             thread = Thread(self.__handle, client, player) #Creates a handle thread
             
-            thread.start() #Not added to handlerThreads as is handled by login thread which is in handlerThreads
+            self.__handlerThreads.append(thread)
+            thread.start() 
             thread.join() #Waits for the thread to terminate (player sends LOGOUT request or stops responding)
 
     def __signup(self, username: str, password: int): #Attempts to sign up 
@@ -541,12 +514,12 @@ class Server: #Class containing server methods and attributes
             except:
                 raise e.DatabaseAccessError
             try:
-                query = f"INSERT INTO Player VALUES ('{username}', '{password}', 0, 0, 1000);"
+                query = f"INSERT INTO Player VALUES ('{username}', '{password}', 0, 0, 1000);" #Sets up and executes basic set up scripts for player accounts, creating the player entry
                 cur.execute(query)
                 conn.commit()
                 c1 = BalancedCountry("Angola", 25, 40) 
-                c2 = AggressiveCountry("Canada", 25, 40)
-                query = "INSERT INTO Country (name, playerID, towns, type, production, priority, hash) VALUES "
+                c2 = AggressiveCountry("Canada", 25, 40) 
+                query = "INSERT INTO Country (name, playerID, towns, type, production, priority, hash) VALUES " #and creating the base country entries
                 c1 = f"('Angola', '{username}', 40, 'BAL', 25, 1, {hash(c1)});"
                 c2 = f"('Canada', '{username}', 40, 'AGG', 25, 1, {hash(c2)});"
                 cur.execute(query + c1)
@@ -554,7 +527,7 @@ class Server: #Class containing server methods and attributes
                 conn.commit()
                 b1 = MajorAttackBuff()
                 b2 = MajorProductionBuff()
-                query = "INSERT INTO Buff (type, playerID, priority, hash) VALUES "
+                query = "INSERT INTO Buff (type, playerID, priority, hash) VALUES " #and the base buff entries
                 b1 = f"('MajorAttack', '{username}', 1, {hash(b1)});"
                 b2 = f"('MinorTowns', '{username}', 1, {hash(b2)});"
                 cur.execute(query + b1)
@@ -566,7 +539,7 @@ class Server: #Class containing server methods and attributes
                 print(f"{username} already exists")
                 raise e.NotUniqueUsernameError            
     
-    def __handle(self, client: socket.socket, player: Player): #Function that handles each
+    def __handle(self, client: socket.socket, player: Player): #Function that handles each client
         print(f"Handling {player.username}")
         disconnectCounter = 0
         while True:
@@ -599,7 +572,7 @@ class Server: #Class containing server methods and attributes
             except:
                 continue
             if command == "END":
-                print(f"{player.username} has signed off")
+                print(f"{player.username} has signed off") #Remove the player from any matchmaking pools and close the player connection
                 client.close()
                 elo = player.elo
                 if elo <= 1000:
@@ -615,9 +588,9 @@ class Server: #Class containing server methods and attributes
                 except:
                     pass
                 break
-            elif command == "MATCHMAKE":
+            elif command == "MATCHMAKE": #Add the player to the matchmaking pools
                 self.__matchmakeInsert(player)
-            elif command == "UNMATCHMAKE":
+            elif command == "UNMATCHMAKE": #Attempt to remove the player from the pools
                 elo = player.elo
                 if elo <= 1000:
                     pool = self.__pool1
@@ -631,53 +604,19 @@ class Server: #Class containing server methods and attributes
                     pool.remove(player)
                 except:
                     pass
-            elif command == "ADDCOUNTRY":
+            elif command == "DEPRIORITISECOUNTRY": 
                 with self.__databaseLock:
                     try:
                         conn = sqlite3.connect("playerData.sqlite3")
                         cur = conn.cursor()
                     except:
                         raise e.DatabaseAccessError
-                    if info[2].upper() == "AGG":
-                        c = AggressiveCountry(info[0], info[3], info[1])
-                    elif info[2].upper() == "BAL":
-                        c = BalancedCountry(info[0], info[3], info[1])
-                    elif info[2].upper() == "DEF":
-                        c = DefensiveCountry(info[0], info[3], info[1])
-                    player.countries.append(c)
-                    query = "INSERT INTO Country (name, playerID, towns, type, production, priority, hash) VALUES "
-                    query += f"('{info[0]}', '{player.username}', {info[1]}, '{info[2]}', {info[3]}, 0, {hash(c)});"
-                    cur.execute(query)
-                    conn.commit()
-                    conn.close()
-            elif command == "ADDBUFF":
-                with self.__databaseLock:
-                    try:
-                        conn = sqlite3.connect("playerData.sqlite3")
-                        cur = conn.cursor()
-                    except:
-                        raise e.DatabaseAccessError
-                    b = eval(info[0]+"Buff()")
-                    player.buffs.append(b)
-                    query = "INSERT INTO Buff (type, playerID, priority, hash) VALUES "
-                    query += f"('{info[0]}', '{player.username}', 0, {hash(b)});"
-                    cur.execute(query)
-                    conn.commit()
-                    conn.close()
-            
-            elif command == "DEPRIORITISECOUNTRY":
-                with self.__databaseLock:
-                    try:
-                        conn = sqlite3.connect("playerData.sqlite3")
-                        cur = conn.cursor()
-                    except:
-                        raise e.DatabaseAccessError
-                    cur.execute(f"UPDATE Country SET priority = 0 WHERE hash = {info[0]} AND playerID = '{player.username}';")
+                    cur.execute(f"UPDATE Country SET priority = 0 WHERE hash = {info[0]} AND playerID = '{player.username}';") #Deprioritise a country given the hash
                     conn.commit()
                     conn.close()
                 for i in player.prioritycountries:
                     if hash(i) == info[0]:
-                        player.prioritycountries.remove(i)
+                        player.prioritycountries.remove(i) #Remove the country from the player priority countries list
                         break
             elif command == "PRIORITYCOUNTRY":
                 with self.__databaseLock:
@@ -686,22 +625,27 @@ class Server: #Class containing server methods and attributes
                         cur = conn.cursor()
                     except:
                         raise e.DatabaseAccessError
-                    cur.execute(f"UPDATE Country SET priority = 1 WHERE hash = {info[0]} AND playerID = '{player.username}';")
+                    cur.execute(f"UPDATE Country SET priority = 1 WHERE hash = {info[0]} AND playerID = '{player.username}';") #Prioritise the country and add it to the priority countries list
                     conn.commit()
                     conn.close()
                 for i in player.countries:
                     if hash(i) == info[0]:
                         player.prioritycountries.append(i)
-            elif command == "DEPRIORITISEBUFF":
+                        break
+            elif command == "DEPRIORITISEBUFF": 
                 with self.__databaseLock:
                     try:
                         conn = sqlite3.connect("playerData.sqlite3")
                         cur = conn.cursor()
                     except:
                         raise e.DatabaseAccessError
-                    cur.execute(f"UPDATE Buff SET priority = 0 WHERE hash = {info[0]} AND playerID = '{player.username}';")
+                    cur.execute(f"UPDATE Buff SET priority = 0 WHERE hash = {info[0]} AND playerID = '{player.username}';") #Deprioritise a buff
                     conn.commit()
                     conn.close()
+                for i in player.buffs:
+                    if hash(i) == info[0]:
+                        player.prioritybuffs.remove(i)
+                        break
             elif command == "PRIORITYBUFF":
                 with self.__databaseLock:
                     try:
@@ -712,25 +656,29 @@ class Server: #Class containing server methods and attributes
                     cur.execute(f"UPDATE Buff SET priority = 1 WHERE hash = {info[0]} AND playerID = '{player.username}';")
                     conn.commit()
                     conn.close()
-            
+                for i in player.buffs:
+                    if hash(i) == info[0]:
+                        player.prioritybuffs.append(i)
+                        break
             elif command == "GETREWARDTUTORIAL":
-                self.getReward(client, player, tutorial=True)
+                self.getReward(client, player, tutorial=True) #Get the tutorial reward
             
-            elif command == "GETREWARDWIN":
+            elif command == "GETREWARDWIN": #Get the reward if a battle was won
                 if player.Battle is not None:
                     probabilityOfWin = ELOCALC.calculateProbabilityOfWin(player.elo, player.enemy.elo)
                     newElo = ELOCALC.calculateNewElo(player.elo, probabilityOfWin, 1)
+                    player.elo = newElo
                     self.getReward(client, player)
                     data = self.receive(client)
                     while data[0] != "RECEIVED":
                         data = self.receive(client) 
                     self.send("ELO", client, player.key, newElo)
-            elif command == "GETREWARDLOSS":
+            elif command == "GETREWARDLOSS": #Get the reward if a battle was lost
                 if player.Battle is not None:
                     probabilityOfWin = ELOCALC.calculateProbabilityOfWin(player.elo, player.enemy.elo)
                     newElo = ELOCALC.calculateNewElo(player.elo, probabilityOfWin, 0)
                     num = random.random()
-                    if num <= 0.3:
+                    if num <= 0.3: #If the battle was lost, there is a 30% chance the loser gets a reward
                         self.getReward(client, player)
                     else:
                         self.send("REWARD", client, player.key, None)
@@ -738,10 +686,11 @@ class Server: #Class containing server methods and attributes
                     while data[0] != "RECEIVED":
                         data = self.receive(client) 
                     self.send("ELO", client, player.key, newElo)
+                    player.elo = newElo
             
     def __matchmakeInsert(self, player: Player):
-        elo = player.elo
-        if elo <= 1000:
+        elo = player.elo 
+        if elo <= 1000: 
             lock = self.__pool1Lock
             pool = self.__pool1
             poolnum = 1
@@ -762,7 +711,7 @@ class Server: #Class containing server methods and attributes
             poolnum = 4
             print(f"{player.username} placed in pool 4")
         with lock:
-            pos = self.__binaryPoolSearchInsert(pool, elo, 0, len(pool) - 1)
+            pos = self.__binaryPoolSearchInsert(pool, elo, 0, len(pool) - 1) #Gets the correct position using a binary search
             if poolnum == 1:
                 self.__pool1 = pool[:pos] + [player] + pool[pos:]
                 print("Current pool1: ", self.__pool1)
@@ -778,7 +727,7 @@ class Server: #Class containing server methods and attributes
 
     def __matchmake(self):
         while True:
-            poolNum = random.randint(1, 4)
+            poolNum = random.randint(1, 4) #Matchmake a random player in a random pool
             if poolNum == 1:
                 lock = self.__pool1Lock
                 pool = self.__pool1
@@ -793,7 +742,7 @@ class Server: #Class containing server methods and attributes
                 pool = self.__pool4
             with lock:
                 length = len(pool)
-                if length >= 2:
+                if length >= 2: #If less than two players in the pool, dont try and matchmake
                     position = random.randint(0, length-1)
                 else:
                     continue
@@ -801,17 +750,17 @@ class Server: #Class containing server methods and attributes
                 player = pool[position]
                 value = player.elo
                 pool.remove(player)
-                opponent = self.__binarySearchMatchmake(pool, value, 0, len(pool)-1)
+                opponent = self.__binarySearchMatchmake(pool, value, 0, len(pool)-1) #Get the player with the closest elo
                 pool.remove(opponent)
             print(player, opponent, "are battling!")
-            self.send("MATCHMADE", player.socket, player.key)
+            self.send("MATCHMADE", player.socket, player.key) #Send confirmation to players that theyve been matchmade
             self.send("MATCHMADE", opponent.socket, opponent.key)
-            battleThread = Thread(Battle, player, opponent) 
+            battleThread = Thread(Battle, player, opponent) #Create a thread for a battle object and add to the list, then start the thread
             self.__battleThreads.append(battleThread)
             battleThread.start()
 
     def __binarySearchMatchmake(self, pool: list[Player], value: int, first: int, last: int) -> Player:
-        if first > last:
+        if first > last: #Simple binary search to get player objects in a list
             return pool[first]
         else:
             midpoint = (first + last) // 2
@@ -826,7 +775,7 @@ class Server: #Class containing server methods and attributes
 
 
     def __binaryPoolSearchInsert(self, pool: list[Player], value: int, first: int, last: int) -> int: #binary search for insertion sort
-        if first > last:
+        if first > last: #Simple binary search to get an index in a list
             return first
         else:
             midpoint = (first + last) // 2
@@ -843,14 +792,14 @@ class Server: #Class containing server methods and attributes
         return self.__CountryNames[random.randint(0, len(self.__CountryNames)-1)]
     
     def getReward(self, client: socket.socket, player: Player, tutorial=False) -> list:
-        towns = [30, 35, 40, 45, 50, 55, 60]
+        towns = [30, 35, 40, 45, 50, 55, 60] #Generate lists of possible values for each statistic
         production = [20, 25, 30, 35, 40]
         if tutorial:
             towns = towns[:4]
             production = production[:2]
         num = random.random()
-        if num > 0.3:
-            towns = towns[random.randint(0, len(towns)-1)]
+        if num > 0.3: #70% chance the card is a country
+            towns = towns[random.randint(0, len(towns)-1)] #Randomly select the values and generate the card, send the card to the player and add to the database and player object
             production = production[random.randint(0, len(production)-1)]
             name = self.__generateName()
             subclass = ["AGG", "BAL", "DEF"]
@@ -861,14 +810,14 @@ class Server: #Class containing server methods and attributes
                 card = BalancedCountry(name, production, towns)
             elif subclass == "DEF":
                 card = DefensiveCountry(name, production, towns)
-            self.send("REWARD", client, player.key, "COUNTRY", name, towns, subclass, production)
+            self.send("REWARD", client, player.key, "COUNTRY", name, towns, subclass, production) #Send the player the reward country
             with self.__databaseLock:
                 try:
                     conn = sqlite3.connect("playerData.sqlite3")
                     cur = conn.cursor()
                 except:
                     raise e.DatabaseAccessError
-                cur.execute(f"SELECT hash FROM Country WHERE playerID = '{player.username}';")
+                cur.execute(f"SELECT hash FROM Country WHERE playerID = '{player.username}';") #Get a list of hashes of the player countries and add it to the database if the country doesnt exist
                 hashList = cur.fetchall()
                 if hash(card) not in hashList:
                     player.countries.append(card)
@@ -876,23 +825,23 @@ class Server: #Class containing server methods and attributes
                     query += f"('{name}', '{player.username}', {towns}, '{subclass}', {production}, 0, {hash(card)});"
                     cur.execute(query)
                     conn.commit()
-        else:
+        else: #30% chance the card is a buff
             subclass = random.random()
-            if subclass > 0.3 or tutorial:
+            if subclass > 0.3 or tutorial: #70% chance of it being a minor buff, or always if its a tutorial reward
                 subclass = "Minor"
             else:
                 subclass = "Major"
             stats = ["Towns", "Production", "Attack", "Defense", "SiegeAttack", "SiegeDefense", "Fortification"]
             stat = stats[random.randint(0, len(stats)-1)]
             card = eval(subclass + stat + "Buff()")
-            self.send("REWARD", client, player.key, "BUFF", subclass+stat)
+            self.send("REWARD", client, player.key, "BUFF", subclass+stat) #Send the reward buff
             with self.__databaseLock:
                 try:
                     conn = sqlite3.connect("playerData.sqlite3")
                     cur = conn.cursor()
                 except:
                     raise e.DatabaseAccessError
-                cur.execute(f"SELECT hash FROM Buff WHERE playerID = '{player.username}';")
+                cur.execute(f"SELECT hash FROM Buff WHERE playerID = '{player.username}';") #If the buff does not exist in the players account, add it
                 hashList = cur.fetchall()
                 if hash(card) not in hashList:
                     player.buffs.append(card)
@@ -903,10 +852,10 @@ class Server: #Class containing server methods and attributes
         conn.close()
 
 class EloCalculator:
-
+    "Class containing methods for calculating elo gain or loss"
     def __init__(self, mean, k):
-        self.mean = mean
-        self.k = k
+        self.mean = mean #Mean is the default starting value
+        self.k = k #the k value affects the sensitivity of each result to your score. A higher k value increases the volatility of the score whereas a lower k value decreases it
     
     def assignElo(self):
         return self.mean
@@ -916,16 +865,16 @@ class EloCalculator:
     
     def calculateNewElo(self, elo, probability, score):
         if elo < 1000:
-            k = self.k + 8
+            k = self.k + 8 #When using varied k values, it makes more sense to have higher k values for lower score players, so that they can feel they are improving at a greater pace
         elif elo < 2000:
             k = self.k
-        elif elo < 2400:
+        elif elo < 2400: #With higher score players, its better to use a lower k value so that one bad day cannot completely ruin a hard earned score
             k = self.k - 8
         elif elo > 2400:
             k = self.k - 16
-        return elo + round(k*(score - probability))
+        return elo + round(k*(score - probability)) #Ensure the final result is an integer
 
 if __name__ == "__main__":
-    ELOCALC = EloCalculator(1000, 24)
+    ELOCALC = EloCalculator(2000, 24)
     SERVER = Server()
     
